@@ -37,8 +37,8 @@ void Bot::makeMoves()
         for(int d=0; d<TDIRECTIONS; d++)
         {
             Location loc = state.getLocation(state.myAnts[ant], d);
-
-            if(!state.grid[loc.row][loc.col].isWater)
+            Square& square = state.grid[loc.row][loc.col];
+            if(!square.isWater && square.ant == -1)
             {
                 state.makeMove(state.myAnts[ant], d);
                 break;
