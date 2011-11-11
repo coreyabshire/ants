@@ -1,0 +1,6 @@
+MyBot
+*.o
+*.zip
+tools/
+game_logs/
+*~
