@@ -15,6 +15,8 @@ struct Location
         row = col = 0;
     };
 
+    Location(const Location& loc) : row(loc.row), col(loc.col) {};
+
     Location(int r, int c)
     {
         row = r;

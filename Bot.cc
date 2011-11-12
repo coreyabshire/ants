@@ -85,6 +85,16 @@ void Bot::makeMoves()
     set<Location> sortedFood(state.food.begin(), state.food.end());
     set<Location> sortedAnts(state.myAnts.begin(), state.myAnts.end());
     set<Location> sortedHills(state.myHills.begin(), state.myHills.end());
+    map<Location, Search*> searches;
+
+    for (set<Location>::iterator antp = sortedAnts.begin();
+	 antp != sortedAnts.end(); antp++)
+    {
+	Search *search = new Search(state, *antp);
+	searches[*antp] = search;
+	state.bug << "calculated search for " << *antp << endl;
+	state.bug << "distance map contains " << search->d.size() << " entries" << endl;
+    }
 
     // add new hills to the set of all enemy hills
     for (vector<Location>::iterator hillp = state.enemyHills.begin();
@@ -93,6 +103,16 @@ void Bot::makeMoves()
 	if (!enemyHills.count(*hillp))
 	{
 	    enemyHills.insert(*hillp);
+	}
+    }
+
+    // remove destroyed hills from the list of hills
+    for (set<Location>::iterator hillp = enemyHills.begin();
+	 hillp != enemyHills.end(); hillp++)
+    {
+	if (sortedAnts.count(*hillp))
+	{
+	    enemyHills.erase(*hillp);
 	}
     }
 
@@ -113,7 +133,8 @@ void Bot::makeMoves()
 	for (set<Location>::iterator antp = sortedAnts.begin();
 	     antp != sortedAnts.end(); antp++)
 	{
-	    int distance = state.manhattan(*antp, *foodp);
+	    int distance = searches[*antp]->distance(*foodp);
+	    state.bug << "distance from " << *antp << " to " << *foodp << " is " << distance << endl;
 	    foodRoutes.push_back(Route(*antp, *foodp, distance));
 	}
     }
@@ -123,10 +144,12 @@ void Bot::makeMoves()
     for (vector<Route>::iterator routep = foodRoutes.begin();
 	 routep != foodRoutes.end(); routep++)
     {
+	state.bug << "doing move from " << (*routep).start << " to " << (*routep).end << endl;
 	if (!foodTargets.count((*routep).end) &&
 	    !antsUsed.count((*routep).start) &&
-	    doMoveLocation((*routep).start, (*routep).end))
+	    doMoveLocation((*routep).start, searches[(*routep).start]->step(state, (*routep).start, (*routep).end)))
 	{
+	    state.bug << "did move" << endl;
 	    foodTargets.insert((*routep).end);
 	    antsUsed.insert((*routep).start);
 	}
@@ -142,7 +165,7 @@ void Bot::makeMoves()
 	{
 	    if (!antsUsed.count(*antp))
 	    {
-		int distance = state.manhattan(*antp, *hillp);
+		int distance = searches[*antp]->distance(*hillp);
 		hillRoutes.push_back(Route(*antp, *hillp, distance));
 	    }
 	}
@@ -151,7 +174,7 @@ void Bot::makeMoves()
     for (vector<Route>::iterator routep = hillRoutes.begin();
 	 routep != hillRoutes.end(); routep++)
     {
-	if (doMoveLocation((*routep).start, (*routep).end))
+	if (doMoveLocation((*routep).start, searches[(*routep).start]->step(state, (*routep).start, (*routep).end)))
 	{
 	    antsUsed.insert((*routep).start);
 	}
@@ -167,14 +190,14 @@ void Bot::makeMoves()
 	    for (set<Location>::iterator locp = unseen.begin();
 		 locp != unseen.end(); locp++)
 	    {
-		int distance = state.manhattan(*antp, *locp);
+		int distance = searches[*antp]->distance(*locp);
 		unseenRoutes.push_back(Route(*antp, *locp, distance));
 	    }
 	    sort(unseenRoutes.begin(), unseenRoutes.end());
 	    for (vector<Route>::iterator routep = unseenRoutes.begin();
 		 routep != unseenRoutes.end(); routep++)
 	    {
-		if (doMoveLocation((*routep).start, (*routep).end))
+		if (doMoveLocation((*routep).start, searches[(*routep).start]->step(state, (*routep).start, (*routep).end)))
 		{
 		    antsUsed.insert((*routep).start);
 		    break;
@@ -211,6 +234,11 @@ void Bot::makeMoves()
 		}
 	    }
 	}
+    }
+
+    for (map<Location,Search*>::iterator it = searches.begin(); it != searches.end(); it++)
+    {
+	delete (*it).second;
     }
 
     state.bug << "time taken: " << state.timer.getTime() << "ms" << endl << endl;

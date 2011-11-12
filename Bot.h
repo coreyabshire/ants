@@ -3,9 +3,11 @@
 
 #include <map>
 #include <set>
+#include <queue>
 #include <algorithm>
 #include "State.h"
 #include "Route.h"
+#include "Search.h"
 
 using namespace std;
 
@@ -28,6 +30,7 @@ struct Bot
 
     bool doMoveDirection(const Location &ant, int d);
     bool doMoveLocation(const Location &antLoc, const Location &destLoc);
+    vector<Location> shortestPath(const Location &a, const Location &b);
 };
 
 #endif //BOT_H_
