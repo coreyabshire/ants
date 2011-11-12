@@ -86,6 +86,17 @@ void Bot::makeMoves()
     set<Location> sortedAnts(state.myAnts.begin(), state.myAnts.end());
     set<Location> sortedHills(state.myHills.begin(), state.myHills.end());
 
+    // add new hills to the set of all enemy hills
+    for (vector<Location>::iterator hillp = state.enemyHills.begin();
+	 hillp != state.enemyHills.end(); hillp++)
+    {
+	if (!enemyHills.count(*hillp))
+	{
+	    enemyHills.insert(*hillp);
+	}
+    }
+
+    // update set of unseen tiles
     for (set<Location>::iterator locp = unseen.begin(); locp != unseen.end(); locp++) 
     {
 	Square& square = state.grid[(*locp).row][(*locp).col];
@@ -117,6 +128,31 @@ void Bot::makeMoves()
 	    doMoveLocation((*routep).start, (*routep).end))
 	{
 	    foodTargets.insert((*routep).end);
+	    antsUsed.insert((*routep).start);
+	}
+    }
+
+    // assign ants to destroy enemy hills
+    vector<Route> hillRoutes;
+    for (set<Location>::iterator hillp = enemyHills.begin();
+	 hillp != enemyHills.end(); hillp++)
+    {
+	for (set<Location>::iterator antp = sortedAnts.begin();
+	     antp != sortedAnts.end(); antp++)
+	{
+	    if (!antsUsed.count(*antp))
+	    {
+		double distance = state.distance(*antp, *hillp);
+		hillRoutes.push_back(Route(*antp, *hillp, distance));
+	    }
+	}
+    }
+    sort(hillRoutes.begin(), hillRoutes.end());
+    for (vector<Route>::iterator routep = hillRoutes.begin();
+	 routep != hillRoutes.end(); routep++)
+    {
+	if (doMoveLocation((*routep).start, (*routep).end))
+	{
 	    antsUsed.insert((*routep).start);
 	}
     }

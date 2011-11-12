@@ -17,6 +17,7 @@ struct Bot
     State state;
     map<Location, Location> orders;
     set<Location> unseen;
+    set<Location> enemyHills;
 
     Bot();
 
