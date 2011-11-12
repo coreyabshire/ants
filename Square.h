@@ -2,6 +2,7 @@
 #define SQUARE_H_
 
 #include <vector>
+#include <iostream>
 
 /*
     struct for representing a square in the grid.
@@ -28,5 +29,7 @@ struct Square
         deadAnts.clear();
     };
 };
+
+std::ostream& operator<<(std::ostream& os, const Square &square);
 
 #endif //SQUARE_H_

@@ -1,6 +1,7 @@
 MyBot
 *.o
 *.zip
+debug.txt
 tools/
 game_logs/
 *~
