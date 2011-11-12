@@ -3,6 +3,7 @@
 
 #include <map>
 #include "State.h"
+#include "Route.h"
 
 using namespace std;
 
@@ -12,7 +13,7 @@ using namespace std;
 struct Bot
 {
     State state;
-    map<Location, int> orders;
+    map<Location, Location> orders;
 
     Bot();
 
@@ -21,7 +22,7 @@ struct Bot
     void makeMoves();   //makes moves for a single turn
     void endTurn();     //indicates to the engine that it has made its moves
 
-    bool doMoveDirection(int ant, int d);
+    bool doMoveDirection(const Location &ant, int d);
 };
 
 #endif //BOT_H_
