@@ -58,6 +58,13 @@ bool Bot::doMoveLocation(const Location &antLoc, const Location &destLoc)
 void Bot::makeMoves()
 {
     orders.clear();
+
+    // keep ants from moving onto our own hills and preventing spawning
+    for (vector<Location>::iterator hillp = state.myHills.begin();
+	 hillp != state.myHills.end(); hillp++)
+    {
+	orders[*hillp] = *hillp;
+    }
     
     state.bug << "turn " << state.turn << ":" << endl;
     state.bug << state << endl;
@@ -67,7 +74,9 @@ void Bot::makeMoves()
     vector<Route> foodRoutes;
     set<Location> sortedFood(state.food.begin(), state.food.end());
     set<Location> sortedAnts(state.myAnts.begin(), state.myAnts.end());
+    set<Location> sortedHills(state.myHills.begin(), state.myHills.end());
 
+    // calculate distance from each ant to each food
     for (set<Location>::iterator foodp = sortedFood.begin();
 	 foodp != sortedFood.end(); foodp++)
     {
@@ -79,8 +88,8 @@ void Bot::makeMoves()
 	}
     }
 
+    // assign ants to the closest food
     sort(foodRoutes.begin(), foodRoutes.end());
-
     for (vector<Route>::iterator routep = foodRoutes.begin();
 	 routep != foodRoutes.end(); routep++)
     {
@@ -90,6 +99,36 @@ void Bot::makeMoves()
 	{
 	    foodTargets.insert((*routep).end);
 	    antsUsed.insert((*routep).start);
+	}
+    }
+
+    // have remaining ants stay where they are, so hill unblocking doesn't destroy ants
+    for (set<Location>::iterator antp = sortedAnts.begin();
+	 antp != sortedAnts.end(); antp++)
+    {
+	if (!antsUsed.count(*antp))
+	{
+	    if (!sortedHills.count(*antp)) 
+	    {
+		orders[*antp] = *antp;
+		antsUsed.insert(*antp);
+	    }
+	}
+    }
+
+    // unblock hills
+    for (set<Location>::iterator hillp = sortedHills.begin();
+	 hillp != sortedHills.end(); hillp++)
+    {
+	if (sortedAnts.count(*hillp) && !antsUsed.count(*hillp))
+	{
+	    for (int d = 0; d < TDIRECTIONS; d++)
+	    {
+		if (doMoveDirection(*hillp, d))
+		{
+		    break;
+		}
+	    }
 	}
     }
 
