@@ -9,11 +9,11 @@
 */
 struct Route
 {
-    Location& start;
-    Location& end;
-    int distance;
+    Location start;
+    Location end;
+    double distance;
 
-    Route(Location& start, Location& end, int distance);
+    Route(const Location& start, const Location& end, double distance);
 };
 
 bool operator<(const Route &a, const Route &b);
