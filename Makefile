@@ -10,6 +10,10 @@ CFLAGS+=-g -DDEBUG
 
 all: $(OBJECTS) $(EXECUTABLE)
 
+zip:
+	rm MyBot.zip
+	zip MyBot Makefile *.h *.cc
+
 $(EXECUTABLE): $(OBJECTS)
 	$(CC) $(LDFLAGS) $(OBJECTS) -o $@
 
