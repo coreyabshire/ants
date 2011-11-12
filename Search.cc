@@ -2,52 +2,50 @@
 
 const int GRAY = 1;
 const int BLACK = 2;
-Search::Search(State &state, const Location &s)
+Search::Search(State &state, const Location &start) : start(start)
 {
-    std::map<Location,int> c;
+    std::map<Location,int> colors;
     std::queue<Location> q;
-    c[s] = GRAY;
-    d[s] = 0;
-    p[s] = s;
-    q.push(s);
+    colors[start] = GRAY;
+    distances[start] = 0;
+    predecessors[start] = start;
+    q.push(start);
     while (!q.empty())
     {
 	Location& u = q.front();
-	for (int dir = 0; dir < TDIRECTIONS; dir++)
+	for (int d = 0; d < TDIRECTIONS; d++)
 	{
-	    Location v = state.getLocation(u, dir);
+	    Location v = state.getLocation(u, d);
 	    if (!state.grid[v.row][v.col].isWater) 
 	    {
-		if (!c.count(v))
+		if (!colors.count(v))
 		{
-		    c[v] = GRAY;
-		    d[v] = d[u] + 1;
-		    p[v] = u;
+		    colors[v] = GRAY;
+		    distances[v] = distances[u] + 1;
+		    predecessors[v] = u;
 		    q.push(v);
 		}
 	    }
 	}
-	c[u] = BLACK;
+	colors[u] = BLACK;
 	q.pop();
     }
 }
 
 int Search::distance(const Location& dest)
 {
-    return d[dest];
+    return distances[dest];
 }
 
-Location Search::step(State& state, const Location& start, const Location& dest)
+Location Search::step(const Location& dest)
 {
     Location loc = dest;
-    int c = 0;
-    while (!(p[loc] == start) && c < 200)
+    
+    while (predecessors.count(loc) && predecessors[loc] != start)
     {
-	state.bug << "step - s: " << start << ", loc: " << loc << std::endl;
-	loc = p[loc];
-	c++;
+	loc = predecessors[loc];
     }
-    state.bug << "next step from " << start << " is " << loc << std::endl;
+
     return loc;
 }
 

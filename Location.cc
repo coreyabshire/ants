@@ -15,6 +15,11 @@ bool operator==(const Location &a, const Location &b)
     return a.row == b.row && a.col == b.col;
 }
 
+bool operator!=(const Location &a, const Location &b)
+{
+    return a.row != b.row || a.col != b.col;
+}
+
 std::ostream& operator<<(std::ostream &os, const Location &loc)
 {
     os << "(" << loc.row << "," << loc.col << ")";

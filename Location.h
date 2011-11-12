@@ -27,6 +27,7 @@ struct Location
 
 bool operator<(const Location &a, const Location &b);
 bool operator==(const Location &a, const Location &b);
+bool operator!=(const Location &a, const Location &b);
 std::ostream& operator<<(std::ostream &os, const Location &loc);
 
 #endif //LOCATION_H_

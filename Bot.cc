@@ -93,7 +93,7 @@ void Bot::makeMoves()
 	Search *search = new Search(state, *antp);
 	searches[*antp] = search;
 	state.bug << "calculated search for " << *antp << endl;
-	state.bug << "distance map contains " << search->d.size() << " entries" << endl;
+	state.bug << "distance map contains " << search->distances.size() << " entries" << endl;
     }
 
     // add new hills to the set of all enemy hills
@@ -147,7 +147,7 @@ void Bot::makeMoves()
 	state.bug << "doing move from " << (*routep).start << " to " << (*routep).end << endl;
 	if (!foodTargets.count((*routep).end) &&
 	    !antsUsed.count((*routep).start) &&
-	    doMoveLocation((*routep).start, searches[(*routep).start]->step(state, (*routep).start, (*routep).end)))
+	    doMoveLocation((*routep).start, searches[(*routep).start]->step((*routep).end)))
 	{
 	    state.bug << "did move" << endl;
 	    foodTargets.insert((*routep).end);
@@ -174,7 +174,7 @@ void Bot::makeMoves()
     for (vector<Route>::iterator routep = hillRoutes.begin();
 	 routep != hillRoutes.end(); routep++)
     {
-	if (doMoveLocation((*routep).start, searches[(*routep).start]->step(state, (*routep).start, (*routep).end)))
+	if (doMoveLocation((*routep).start, searches[(*routep).start]->step((*routep).end)))
 	{
 	    antsUsed.insert((*routep).start);
 	}
@@ -197,7 +197,7 @@ void Bot::makeMoves()
 	    for (vector<Route>::iterator routep = unseenRoutes.begin();
 		 routep != unseenRoutes.end(); routep++)
 	    {
-		if (doMoveLocation((*routep).start, searches[(*routep).start]->step(state, (*routep).start, (*routep).end)))
+		if (doMoveLocation((*routep).start, searches[(*routep).start]->step((*routep).end)))
 		{
 		    antsUsed.insert((*routep).start);
 		    break;

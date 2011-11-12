@@ -7,11 +7,12 @@
 
 struct Search
 {
-    std::map<Location,int> d;
-    std::map<Location,Location> p;
-    Search(State &state, const Location &s);
+    Location start;
+    std::map<Location,int> distances;
+    std::map<Location,Location> predecessors;
+    Search(State &state, const Location &start);
     int distance(const Location& dest);
-    Location step(State &state, const Location& start, const Location& dest);
+    Location step(const Location& dest);
 };
 
 
