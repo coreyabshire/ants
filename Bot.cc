@@ -14,6 +14,16 @@ void Bot::playGame()
     //reads the game parameters and sets up
     cin >> state;
     state.setup();
+
+    // determine all currently unseen tiles
+    for (int row = 0; row < state.rows; row++)
+    {
+	for (int col = 0; col < state.cols; col++)
+	{
+	    unseen.insert(Location(row, col));
+	}
+    }
+
     endTurn();
 
     //continues making moves while the game is not over
@@ -76,6 +86,15 @@ void Bot::makeMoves()
     set<Location> sortedAnts(state.myAnts.begin(), state.myAnts.end());
     set<Location> sortedHills(state.myHills.begin(), state.myHills.end());
 
+    for (set<Location>::iterator locp = unseen.begin(); locp != unseen.end(); locp++) 
+    {
+	Square& square = state.grid[(*locp).row][(*locp).col];
+	if (square.isVisible)
+	{
+	    unseen.erase(locp);
+	}
+    }
+
     // calculate distance from each ant to each food
     for (set<Location>::iterator foodp = sortedFood.begin();
 	 foodp != sortedFood.end(); foodp++)
@@ -99,6 +118,32 @@ void Bot::makeMoves()
 	{
 	    foodTargets.insert((*routep).end);
 	    antsUsed.insert((*routep).start);
+	}
+    }
+
+    // explore unseen areas
+    for (set<Location>::iterator antp = sortedAnts.begin();
+	 antp != sortedAnts.end(); antp++)
+    {
+	if (!antsUsed.count(*antp))
+	{
+	    vector<Route> unseenRoutes;
+	    for (set<Location>::iterator locp = unseen.begin();
+		 locp != unseen.end(); locp++)
+	    {
+		double distance = state.distance(*antp, *locp);
+		unseenRoutes.push_back(Route(*antp, *locp, distance));
+	    }
+	    sort(unseenRoutes.begin(), unseenRoutes.end());
+	    for (vector<Route>::iterator routep = unseenRoutes.begin();
+		 routep != unseenRoutes.end(); routep++)
+	    {
+		if (doMoveLocation((*routep).start, (*routep).end))
+		{
+		    antsUsed.insert((*routep).start);
+		    break;
+		}
+	    }
 	}
     }
 

@@ -16,6 +16,7 @@ struct Bot
 {
     State state;
     map<Location, Location> orders;
+    set<Location> unseen;
 
     Bot();
 
