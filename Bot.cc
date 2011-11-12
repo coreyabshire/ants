@@ -113,7 +113,7 @@ void Bot::makeMoves()
 	for (set<Location>::iterator antp = sortedAnts.begin();
 	     antp != sortedAnts.end(); antp++)
 	{
-	    double distance = state.distance(*antp, *foodp);
+	    int distance = state.manhattan(*antp, *foodp);
 	    foodRoutes.push_back(Route(*antp, *foodp, distance));
 	}
     }
@@ -142,7 +142,7 @@ void Bot::makeMoves()
 	{
 	    if (!antsUsed.count(*antp))
 	    {
-		double distance = state.distance(*antp, *hillp);
+		int distance = state.manhattan(*antp, *hillp);
 		hillRoutes.push_back(Route(*antp, *hillp, distance));
 	    }
 	}
@@ -167,7 +167,7 @@ void Bot::makeMoves()
 	    for (set<Location>::iterator locp = unseen.begin();
 		 locp != unseen.end(); locp++)
 	    {
-		double distance = state.distance(*antp, *locp);
+		int distance = state.manhattan(*antp, *locp);
 		unseenRoutes.push_back(Route(*antp, *locp, distance));
 	    }
 	    sort(unseenRoutes.begin(), unseenRoutes.end());

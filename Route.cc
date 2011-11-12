@@ -1,6 +1,6 @@
 #include "Route.h"
 
-Route::Route(const Location& start, const Location& end, double distance) :
+Route::Route(const Location& start, const Location& end, int distance) :
     start(start), end(end), distance(distance)
 {
 };

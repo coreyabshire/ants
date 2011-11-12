@@ -56,6 +56,16 @@ double State::distance(const Location &loc1, const Location &loc2)
     return sqrt(dr*dr + dc*dc);
 };
 
+//returns the euclidean distance between two locations with the edges wrapped
+int State::manhattan(const Location &a, const Location &b)
+{
+    int r = abs(a.row - b.row),
+        c = abs(a.col - b.col),
+        dr = min(r, rows - r),
+        dc = min(c, cols - c);
+    return dr + dc;
+};
+
 //returns the new location from moving in a given direction with the edges wrapped
 Location State::getLocation(const Location &loc, int direction)
 {

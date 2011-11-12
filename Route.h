@@ -11,9 +11,9 @@ struct Route
 {
     Location start;
     Location end;
-    double distance;
+    int distance;
 
-    Route(const Location& start, const Location& end, double distance);
+    Route(const Location& start, const Location& end, int distance);
 };
 
 bool operator<(const Route &a, const Route &b);
