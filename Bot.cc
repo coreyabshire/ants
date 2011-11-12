@@ -41,6 +41,19 @@ bool Bot::doMoveDirection(const Location &antLoc, int d)
     }
 }
 
+bool Bot::doMoveLocation(const Location &antLoc, const Location &destLoc)
+{
+    vector<int> directions = state.getDirections(antLoc, destLoc);
+    for (vector<int>::iterator dp = directions.begin(); dp != directions.end(); dp++)
+    {
+	if (doMoveDirection(antLoc, *dp))
+	{
+	    return true;
+	}
+    }
+    return false;
+}
+
 //makes the bots moves for the turn
 void Bot::makeMoves()
 {
@@ -49,17 +62,35 @@ void Bot::makeMoves()
     state.bug << "turn " << state.turn << ":" << endl;
     state.bug << state << endl;
 
-    //picks out moves for each ant
-    for(vector<Location>::iterator antp = state.myAnts.begin();
-	antp < state.myAnts.end(); antp++)
+    set<Location> foodTargets;
+    set<Location> antsUsed;
+    vector<Route> foodRoutes;
+    set<Location> sortedFood(state.food.begin(), state.food.end());
+    set<Location> sortedAnts(state.myAnts.begin(), state.myAnts.end());
+
+    for (set<Location>::iterator foodp = sortedFood.begin();
+	 foodp != sortedFood.end(); foodp++)
     {
-        for(int d=0; d<TDIRECTIONS; d++)
-        {
-	    if(doMoveDirection(*antp, d))
-	    {
-		break;
-	    }
-        }
+	for (set<Location>::iterator antp = sortedAnts.begin();
+	     antp != sortedAnts.end(); antp++)
+	{
+	    double distance = state.distance(*antp, *foodp);
+	    foodRoutes.push_back(Route(*antp, *foodp, distance));
+	}
+    }
+
+    sort(foodRoutes.begin(), foodRoutes.end());
+
+    for (vector<Route>::iterator routep = foodRoutes.begin();
+	 routep != foodRoutes.end(); routep++)
+    {
+	if (!foodTargets.count((*routep).end) &&
+	    !antsUsed.count((*routep).start) &&
+	    doMoveLocation((*routep).start, (*routep).end))
+	{
+	    foodTargets.insert((*routep).end);
+	    antsUsed.insert((*routep).start);
+	}
     }
 
     state.bug << "time taken: " << state.timer.getTime() << "ms" << endl << endl;
