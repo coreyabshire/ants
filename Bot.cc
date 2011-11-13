@@ -82,18 +82,46 @@ void Bot::makeMoves()
     set<Location> foodTargets;
     set<Location> antsUsed;
     vector<Route> foodRoutes;
+    vector<Route> hillRoutes;
+    map<Location,Location> foodAnts;
     set<Location> sortedFood(state.food.begin(), state.food.end());
     set<Location> sortedAnts(state.myAnts.begin(), state.myAnts.end());
     set<Location> sortedHills(state.myHills.begin(), state.myHills.end());
-    map<Location, Search*> searches;
+    map<Location, Search> searches;
 
+
+
+    // calculate distance maps to allow shortest path searches
     for (set<Location>::iterator antp = sortedAnts.begin();
 	 antp != sortedAnts.end(); antp++)
     {
-	Search *search = new Search(state, *antp);
-	searches[*antp] = search;
+	searches[*antp] = Search(*antp);
 	state.bug << "calculated search for " << *antp << endl;
-	state.bug << "distance map contains " << search->distances.size() << " entries" << endl;
+	state.bug << "distance map contains " << searches[*antp].distances.size() << " entries" << endl;
+    }
+    for (set<Location>::iterator antp = sortedAnts.begin();
+	 antp != sortedAnts.end(); antp++)
+    {
+	Search &search = searches[*antp];
+	while (!search.remaining.empty())
+	{
+	    Location& u = search.remaining.front();
+	    for (int d = 0; d < TDIRECTIONS; d++)
+	    {
+		Location v = state.getLocation(u, d);
+		if (!state.grid[v.row][v.col].isWater) 
+		{
+		    if (!search.expanded.count(v))
+		    {
+			search.expanded.insert(v);
+			search.distances[v] = search.distances[u] + 1;
+			search.predecessors[v] = u;
+			search.remaining.push(v);
+		    }
+		}
+	    }
+	    search.remaining.pop();
+	}
     }
 
     // add new hills to the set of all enemy hills
@@ -133,7 +161,7 @@ void Bot::makeMoves()
 	for (set<Location>::iterator antp = sortedAnts.begin();
 	     antp != sortedAnts.end(); antp++)
 	{
-	    int distance = searches[*antp]->distance(*foodp);
+	    int distance = searches[*antp].distance(*foodp);
 	    state.bug << "distance from " << *antp << " to " << *foodp << " is " << distance << endl;
 	    foodRoutes.push_back(Route(*antp, *foodp, distance));
 	}
@@ -147,7 +175,7 @@ void Bot::makeMoves()
 	state.bug << "doing move from " << (*routep).start << " to " << (*routep).end << endl;
 	if (!foodTargets.count((*routep).end) &&
 	    !antsUsed.count((*routep).start) &&
-	    doMoveLocation((*routep).start, searches[(*routep).start]->step((*routep).end)))
+	    doMoveLocation((*routep).start, searches[(*routep).start].step((*routep).end)))
 	{
 	    state.bug << "did move" << endl;
 	    foodTargets.insert((*routep).end);
@@ -156,7 +184,6 @@ void Bot::makeMoves()
     }
 
     // assign ants to destroy enemy hills
-    vector<Route> hillRoutes;
     for (set<Location>::iterator hillp = enemyHills.begin();
 	 hillp != enemyHills.end(); hillp++)
     {
@@ -165,7 +192,7 @@ void Bot::makeMoves()
 	{
 	    if (!antsUsed.count(*antp))
 	    {
-		int distance = searches[*antp]->distance(*hillp);
+		int distance = searches[*antp].distance(*hillp);
 		hillRoutes.push_back(Route(*antp, *hillp, distance));
 	    }
 	}
@@ -174,7 +201,7 @@ void Bot::makeMoves()
     for (vector<Route>::iterator routep = hillRoutes.begin();
 	 routep != hillRoutes.end(); routep++)
     {
-	if (doMoveLocation((*routep).start, searches[(*routep).start]->step((*routep).end)))
+	if (doMoveLocation((*routep).start, searches[(*routep).start].step((*routep).end)))
 	{
 	    antsUsed.insert((*routep).start);
 	}
@@ -190,14 +217,14 @@ void Bot::makeMoves()
 	    for (set<Location>::iterator locp = unseen.begin();
 		 locp != unseen.end(); locp++)
 	    {
-		int distance = searches[*antp]->distance(*locp);
+		int distance = searches[*antp].distance(*locp);
 		unseenRoutes.push_back(Route(*antp, *locp, distance));
 	    }
 	    sort(unseenRoutes.begin(), unseenRoutes.end());
 	    for (vector<Route>::iterator routep = unseenRoutes.begin();
 		 routep != unseenRoutes.end(); routep++)
 	    {
-		if (doMoveLocation((*routep).start, searches[(*routep).start]->step((*routep).end)))
+		if (doMoveLocation((*routep).start, searches[(*routep).start].step((*routep).end)))
 		{
 		    antsUsed.insert((*routep).start);
 		    break;
@@ -234,11 +261,6 @@ void Bot::makeMoves()
 		}
 	    }
 	}
-    }
-
-    for (map<Location,Search*>::iterator it = searches.begin(); it != searches.end(); it++)
-    {
-	delete (*it).second;
     }
 
     state.bug << "time taken: " << state.timer.getTime() << "ms" << endl << endl;

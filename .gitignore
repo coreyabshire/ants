@@ -1,7 +1,10 @@
 MyBot
+MyBot1
+MyBot2
 *.o
 *.zip
 debug.txt
+bug*.txt
 tools/
 game_logs/
 *~
