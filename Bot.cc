@@ -41,7 +41,7 @@ bool Bot::doMoveDirection(const Location &antLoc, int d)
     Square& square = state.grid[newLoc.row][newLoc.col];
     if(!square.isWater && !orders.count(newLoc))
     {
-	orders[newLoc] = antLoc;
+	orders.insert(newLoc);
 	state.makeMove(antLoc, d);
 	return true;
     }
@@ -70,68 +70,68 @@ void Bot::makeMoves()
     orders.clear();
 
     // keep ants from moving onto our own hills and preventing spawning
-    for (vector<Location>::iterator hillp = state.myHills.begin();
-	 hillp != state.myHills.end(); hillp++)
-    {
-	orders[*hillp] = *hillp;
-    }
+    orders.insert(state.myHills.begin(), state.myHills.end());
     
     state.bug << "turn " << state.turn << ":" << endl;
     state.bug << state << endl;
+
+    // add new hills to the set of all enemy hills
+    enemyHills.insert(state.enemyHills.begin(), state.enemyHills.end());
+
+    // remove destroyed hills from the list of hills
+//    remove_if(enemyHills.begin(), enemyHills.end(), isVisibleNotHill); 
+    for (set<Location>::iterator p = enemyHills.begin(); p != enemyHills.end(); p++)
+    {
+	Square& square = state.grid[(*p).row][(*p).col];
+	if (square.isVisible && !square.isHill)
+	{
+	    enemyHills.erase(*p);
+	}
+    }
+
+    // add new food to the set of all known food
+    food.insert(state.food.begin(), state.food.end());
+
+    // remove food that is known to now be gone
+    for (set<Location>::iterator p = food.begin(); p != food.end(); p++)
+    {
+	Square& square = state.grid[(*p).row][(*p).col];
+	if (square.isVisible && !square.isFood)
+	{
+	    food.erase(*p);
+	}
+    }
 
     set<Location> foodTargets;
     set<Location> antsUsed;
     vector<Route> foodRoutes;
     vector<Route> hillRoutes;
     map<Location,Location> foodAnts;
-    set<Location> sortedFood(state.food.begin(), state.food.end());
+    set<Location> sortedFood(food.begin(), food.end());
     set<Location> sortedAnts(state.myAnts.begin(), state.myAnts.end());
     set<Location> sortedHills(state.myHills.begin(), state.myHills.end());
     map<Location, Search> searches;
-    queue<Location> searchQueue;
-    map<Location, Location> firstAnt;
-    set<Location> remainingFood(state.food.begin(), state.food.end());
+    set<Location> remainingFood(food.begin(), food.end());
     set<Location> unassignedAnts(state.myAnts.begin(), state.myAnts.end());
     set<Location> assignedAnts;
     map<Location,int> distances;
+    queue<Location> searchQueue;
     
-    // add new hills to the set of all enemy hills
-    for (vector<Location>::iterator hillp = state.enemyHills.begin();
-	 hillp != state.enemyHills.end(); hillp++)
-    {
-	if (!enemyHills.count(*hillp))
-	{
-	    enemyHills.insert(*hillp);
-	}
-    }
-
-    // remove destroyed hills from the list of hills
-    for (set<Location>::iterator hillp = enemyHills.begin();
-	 hillp != enemyHills.end(); hillp++)
-    {
-	if (sortedAnts.count(*hillp))
-	{
-	    enemyHills.erase(*hillp);
-	}
-    }
-
     // update set of unseen tiles
-    for (set<Location>::iterator locp = unseen.begin(); locp != unseen.end(); locp++) 
+    for (set<Location>::iterator p = unseen.begin(); p != unseen.end(); p++) 
     {
-	Square& square = state.grid[(*locp).row][(*locp).col];
+	Square& square = state.grid[(*p).row][(*p).col];
 	if (square.isVisible)
 	{
-	    unseen.erase(locp);
+	    unseen.erase(p);
 	}
     }
 
     // initialize the search state
-    for (vector<Location>::iterator antp = state.myAnts.begin();
-	 antp != state.myAnts.end(); antp++)
+    for (vector<Location>::iterator p = state.myAnts.begin(); p != state.myAnts.end(); p++)
     {
-	searches[*antp] = Search(*antp);
-	searchQueue.push(*antp);
-	firstAnt[*antp] = *antp;
+	searches[*p] = Search(*p);
+	searchQueue.push(*p);
     }
 
     // search breadth first across all ants iteratively
@@ -205,28 +205,24 @@ void Bot::makeMoves()
 
     // assign ants to the closest food
     sort(foodRoutes.begin(), foodRoutes.end());
-    for (vector<Route>::iterator routep = foodRoutes.begin();
-	 routep != foodRoutes.end(); routep++)
+    for (vector<Route>::iterator r = foodRoutes.begin(); r != foodRoutes.end(); r++)
     {
-	state.bug << "doing move from " << (*routep).start << " to " << (*routep).end << endl;
-	if (!foodTargets.count((*routep).end) &&
-	    !antsUsed.count((*routep).start) &&
-	    doMoveLocation((*routep).start, searches[(*routep).start].step((*routep).end)))
+	if (!foodTargets.count((*r).end) &&
+	    !antsUsed.count((*r).start) &&
+	    doMoveLocation((*r).start, searches[(*r).start].step((*r).end)))
 	{
-	    state.bug << "did move" << endl;
-	    foodTargets.insert((*routep).end);
-	    antsUsed.insert((*routep).start);
+	    foodTargets.insert((*r).end);
+	    antsUsed.insert((*r).start);
 	}
     }
 
     // assign ants to destroy enemy hills
     sort(hillRoutes.begin(), hillRoutes.end());
-    for (vector<Route>::iterator routep = hillRoutes.begin();
-	 routep != hillRoutes.end(); routep++)
+    for (vector<Route>::iterator r = hillRoutes.begin(); r != hillRoutes.end(); r++)
     {
-	if (doMoveLocation((*routep).start, searches[(*routep).start].step((*routep).end)))
+	if (doMoveLocation((*r).start, searches[(*r).start].step((*r).end)))
 	{
-	    antsUsed.insert((*routep).start);
+	    antsUsed.insert((*r).start);
 	}
     }
 
@@ -264,7 +260,7 @@ void Bot::makeMoves()
 	{
 	    if (!sortedHills.count(*antp)) 
 	    {
-		orders[*antp] = *antp;
+		orders.insert(*antp);
 		antsUsed.insert(*antp);
 	    }
 	}

@@ -17,9 +17,10 @@ using namespace std;
 struct Bot
 {
     State state;
-    map<Location, Location> orders;
+    set<Location> orders;
     set<Location> unseen;
     set<Location> enemyHills;
+    set<Location> food;
 
     Bot();
 
