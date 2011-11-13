@@ -121,6 +121,7 @@ void Bot::makeMoves()
     set<Location> antsUsed;
     vector<Route> foodRoutes;
     vector<Route> hillRoutes;
+    vector<Route> unseenRoutes;
     map<Location,Location> foodAnts;
     set<Location> sortedFood(food.begin(), food.end());
     set<Location> sortedAnts(state.myAnts.begin(), state.myAnts.end());
@@ -166,6 +167,14 @@ void Bot::makeMoves()
 		search.hills++;
 	    }
 
+	    // If this location has not been seen by any ant, then assign
+	    // the current ant to try to see it.
+	    if (unseen.count(u) && search.food == 0 && search.hills == 0)
+	    {
+		unseenRoutes.push_back(Route(antLoc, u, search.distances[u]));
+		search.unseen++;
+	    }
+
 	    // If there is already an ant at this location, then any hill
 	    // or food we find will be closer to this ant, so it doesn't make
 	    // sense to expand it any more. Instead, we may want to just
@@ -198,7 +207,7 @@ void Bot::makeMoves()
 	    {
 		if (!unassignedAnts.empty()) 
 		{
-		    if (!remainingFood.empty() || (search.food == 0 && search.hills == 0))
+		    if (!remainingFood.empty() || (search.food == 0 && search.hills == 0 && search.unseen == 0))
 		    {
 			searchQueue.push(antLoc);
 		    }
@@ -215,32 +224,24 @@ void Bot::makeMoves()
     doMoveRoutes(hillRoutes, searches, antsUsed);
 
     // explore unseen areas
-    for (set<Location>::iterator antp = sortedAnts.begin();
-	 antp != sortedAnts.end(); antp++)
-    {
-	if (!antsUsed.count(*antp))
-	{
-	    vector<Route> unseenRoutes;
-	    for (set<Location>::iterator locp = unseen.begin();
-		 locp != unseen.end(); locp++)
-	    {
-		int distance = searches[*antp].distance(*locp);
-		unseenRoutes.push_back(Route(*antp, *locp, distance));
-	    }
-	    doMoveRoutes(unseenRoutes, searches, antsUsed);
-	}
-    }
+    doMoveRoutes(unseenRoutes, searches, antsUsed);
 
+    state.bug << "route counts: "
+	      << foodRoutes.size() << " "
+	      << hillRoutes.size() << " "
+	      << unseenRoutes.size() << endl;
+
+    state.bug << "ant count 1: " << antsUsed.size() << " of " << sortedAnts.size() << endl;
+    
     // have remaining ants stay where they are, so hill unblocking doesn't destroy ants
-    for (set<Location>::iterator antp = sortedAnts.begin();
-	 antp != sortedAnts.end(); antp++)
+    for (set<Location>::iterator p = sortedAnts.begin(); p != sortedAnts.end(); p++)
     {
-	if (!antsUsed.count(*antp))
+	if (!antsUsed.count(*p))
 	{
-	    if (!sortedHills.count(*antp)) 
+	    if (!sortedHills.count(*p)) 
 	    {
-		orders.insert(*antp);
-		antsUsed.insert(*antp);
+		orders.insert(*p);
+		antsUsed.insert(*p);
 	    }
 	}
     }
