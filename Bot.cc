@@ -16,9 +16,9 @@ void Bot::playGame()
     state.setup();
 
     // determine all currently unseen tiles
-    for (int row = 0; row < state.rows; row++)
+    for (int row = 0; row < state.rows; row += 5)
     {
-	for (int col = 0; col < state.cols; col++)
+	for (int col = 0; col < state.cols; col += 5)
 	{
 	    unseen.insert(Location(row, col));
 	}
@@ -90,7 +90,11 @@ void Bot::makeMoves()
     map<Location, Search> searches;
     queue<Location> searchQueue;
     map<Location, Location> firstAnt;
-
+    set<Location> remainingFood(state.food.begin(), state.food.end());
+    set<Location> unassignedAnts(state.myAnts.begin(), state.myAnts.end());
+    set<Location> assignedAnts;
+    map<Location,int> distances;
+    
     // add new hills to the set of all enemy hills
     for (vector<Location>::iterator hillp = state.enemyHills.begin();
 	 hillp != state.enemyHills.end(); hillp++)
@@ -121,16 +125,16 @@ void Bot::makeMoves()
 	}
     }
 
-    // calculate distance maps to allow shortest path searches
+    // initialize the search state
     for (vector<Location>::iterator antp = state.myAnts.begin();
 	 antp != state.myAnts.end(); antp++)
     {
 	searches[*antp] = Search(*antp);
 	searchQueue.push(*antp);
 	firstAnt[*antp] = *antp;
-	state.bug << "calculated search for " << *antp << endl;
-	state.bug << "distance map contains " << searches[*antp].distances.size() << " entries" << endl;
     }
+
+    // search breadth first across all ants iteratively
     while (!searchQueue.empty())
     {
 	Location& antLoc = searchQueue.front();
@@ -139,9 +143,32 @@ void Bot::makeMoves()
 	{
 	    Location& u = search.remaining.front();
 
-	    if (sortedFood.count(u))
+	    // If this location has one of the remaining food, then assign
+	    // the current ant to collect it.  Ants may be assigned multiple
+	    // food, but each food will only be assigned to one ant.
+	    if (remainingFood.count(u))
 	    {
 		foodRoutes.push_back(Route(antLoc, u, search.distances[u]));
+		remainingFood.erase(u);
+		search.food++;
+		unassignedAnts.erase(antLoc);
+		assignedAnts.insert(antLoc);
+	    }
+	    
+	    // If this location has an enemy hill, then assign the current
+	    // ant to attack it unless it is already assigned to collect food.
+	    if (enemyHills.count(u) && search.food == 0)
+	    {
+		hillRoutes.push_back(Route(antLoc, u, search.distances[u]));
+		search.hills++;
+	    }
+
+	    // If there is already an ant at this location, then any hill
+	    // or food we find will be closer to this ant, so it doesn't make
+	    // sense to expand it any more. Instead, we may want to just
+	    // move towards this ant to replace it if it moves.
+	    if (sortedAnts.count(u))
+	    {
 	    }
 
 	    for (int d = 0; d < TDIRECTIONS; d++)
@@ -151,23 +178,33 @@ void Bot::makeMoves()
 		{
 		    if (!search.expanded.count(v))
 		    {
+			int distance = search.distances[u] + 1;
 			search.expanded.insert(v);
-			search.distances[v] = search.distances[u] + 1;
+			search.distances[v] = distance;
 			search.predecessors[v] = u;
+			distances[u] = distance;
 			search.remaining.push(v);
 		    }
 		}
 	    }
+
 	    search.remaining.pop();
 	    if (!search.remaining.empty())
 	    {
-		searchQueue.push(antLoc);
+		if (!unassignedAnts.empty()) 
+		{
+		    if (!remainingFood.empty() || (search.food == 0 && search.hills == 0))
+		    {
+			searchQueue.push(antLoc);
+		    }
+		}
 	    }
 	    searchQueue.pop();
 	}
     }
 
     // assign ants to the closest food
+    sort(foodRoutes.begin(), foodRoutes.end());
     for (vector<Route>::iterator routep = foodRoutes.begin();
 	 routep != foodRoutes.end(); routep++)
     {
@@ -183,19 +220,6 @@ void Bot::makeMoves()
     }
 
     // assign ants to destroy enemy hills
-    for (set<Location>::iterator hillp = enemyHills.begin();
-	 hillp != enemyHills.end(); hillp++)
-    {
-	for (set<Location>::iterator antp = sortedAnts.begin();
-	     antp != sortedAnts.end(); antp++)
-	{
-	    if (!antsUsed.count(*antp))
-	    {
-		int distance = searches[*antp].distance(*hillp);
-		hillRoutes.push_back(Route(*antp, *hillp, distance));
-	    }
-	}
-    }
     sort(hillRoutes.begin(), hillRoutes.end());
     for (vector<Route>::iterator routep = hillRoutes.begin();
 	 routep != hillRoutes.end(); routep++)

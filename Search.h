@@ -13,6 +13,8 @@ struct Search
     std::map<Location,Location> predecessors;
     std::set<Location> expanded;
     std::queue<Location> remaining;
+    int food;
+    int hills;
 
     Search() {};
     Search(const Location &start);
