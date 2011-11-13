@@ -66,9 +66,27 @@ bool Bot::doMoveLocation(const Location &antLoc, const Location &destLoc)
     return false;
 }
 
+bool Bot::doMoveRoutes(vector<Route>& routes, map<Location, Search> &searches, set<Location> &antsUsed)
+{
+    sort(routes.begin(), routes.end());
+    for (vector<Route>::iterator r = routes.begin(); r != routes.end(); r++)
+    {
+	if (!antsUsed.count((*r).start) &&
+	    doMoveLocation((*r).start, searches[(*r).start].step((*r).end)))
+	{
+	    antsUsed.insert((*r).start);
+	}
+    }
+}
+
 inline bool isVisibleAndNotHill(Square &s) { return s.isVisible && !s.isHill; }
 inline bool isVisibleAndNotFood(Square &s) { return s.isVisible && !s.isFood; }
 inline bool isVisible(Square &s) { return s.isVisible; }
+
+void Bot::insertAll(set<Location> &to, vector<Location> &from)
+{
+    to.insert(from.begin(), from.end());
+}
 
 void Bot::removeIf(set<Location> &locs, bool(*pred)(Square &))
 {
@@ -81,7 +99,7 @@ void Bot::removeIf(set<Location> &locs, bool(*pred)(Square &))
 
 void Bot::updateMemory(set<Location> &memory, vector<Location> &seen, bool(*pred)(Square &))
 {
-    memory.insert(seen.begin(), seen.end());
+    insertAll(memory, seen);
     removeIf(memory, pred);
 }
 
@@ -91,7 +109,7 @@ void Bot::makeMoves()
     orders.clear();
 
     // keep ants from moving onto our own hills and preventing spawning
-    orders.insert(state.myHills.begin(), state.myHills.end());
+    insertAll(orders, state.myHills);
     
     state.bug << "turn " << state.turn << ":" << endl;
     state.bug << state << endl;
@@ -191,26 +209,10 @@ void Bot::makeMoves()
     }
 
     // assign ants to the closest food
-    sort(foodRoutes.begin(), foodRoutes.end());
-    for (vector<Route>::iterator r = foodRoutes.begin(); r != foodRoutes.end(); r++)
-    {
-	if (!antsUsed.count((*r).start) &&
-	    doMoveLocation((*r).start, searches[(*r).start].step((*r).end)))
-	{
-	    antsUsed.insert((*r).start);
-	}
-    }
+    doMoveRoutes(foodRoutes, searches, antsUsed);
 
     // assign ants to destroy enemy hills
-    sort(hillRoutes.begin(), hillRoutes.end());
-    for (vector<Route>::iterator r = hillRoutes.begin(); r != hillRoutes.end(); r++)
-    {
-	if (!antsUsed.count((*r).start) &&
-	    doMoveLocation((*r).start, searches[(*r).start].step((*r).end)))
-	{
-	    antsUsed.insert((*r).start);
-	}
-    }
+    doMoveRoutes(hillRoutes, searches, antsUsed);
 
     // explore unseen areas
     for (set<Location>::iterator antp = sortedAnts.begin();
@@ -225,16 +227,7 @@ void Bot::makeMoves()
 		int distance = searches[*antp].distance(*locp);
 		unseenRoutes.push_back(Route(*antp, *locp, distance));
 	    }
-	    sort(unseenRoutes.begin(), unseenRoutes.end());
-	    for (vector<Route>::iterator routep = unseenRoutes.begin();
-		 routep != unseenRoutes.end(); routep++)
-	    {
-		if (doMoveLocation((*routep).start, searches[(*routep).start].step((*routep).end)))
-		{
-		    antsUsed.insert((*routep).start);
-		    break;
-		}
-	    }
+	    doMoveRoutes(unseenRoutes, searches, antsUsed);
 	}
     }
 
