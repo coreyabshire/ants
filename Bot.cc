@@ -2,10 +2,12 @@
 
 using namespace std;
 
+Bot *bot;
+
 //constructor
 Bot::Bot()
 {
-
+    bot = this;
 };
 
 //plays a single game of Ants.
@@ -64,10 +66,19 @@ bool Bot::doMoveLocation(const Location &antLoc, const Location &destLoc)
     return false;
 }
 
+bool visibleNotSquare(const Location& p)
+{
+    Square& square = bot->state.grid[p.row][p.col];
+    return square.isVisible && !square.isHill;
+}
+
 //makes the bots moves for the turn
 void Bot::makeMoves()
 {
     orders.clear();
+
+    set<Location> destroyedHills;
+    set<Location> consumedFood;
 
     // keep ants from moving onto our own hills and preventing spawning
     orders.insert(state.myHills.begin(), state.myHills.end());
@@ -78,27 +89,30 @@ void Bot::makeMoves()
     // add new hills to the set of all enemy hills
     enemyHills.insert(state.enemyHills.begin(), state.enemyHills.end());
 
-    // remove destroyed hills from the list of hills
-    for (set<Location>::iterator p = enemyHills.begin(); p != enemyHills.end(); p++)
+    // see which hills have been destroyed
+    for (set<Location>::iterator p = enemyHills.begin(); p != enemyHills.end();)
     {
 	Square& square = state.grid[(*p).row][(*p).col];
 	if (square.isVisible && !square.isHill)
-	{
-	    enemyHills.erase(*p);
-	}
+	    enemyHills.erase(*p++);
+	else
+	    ++p;
     }
+
+    // remove destroyed hills
+    enemyHills.erase(destroyedHills.begin(), destroyedHills.end());
 
     // add new food to the set of all known food
     food.insert(state.food.begin(), state.food.end());
 
     // remove food that is known to now be gone
-    for (set<Location>::iterator p = food.begin(); p != food.end(); p++)
+    for (set<Location>::iterator p = food.begin(); p != food.end();)
     {
 	Square& square = state.grid[(*p).row][(*p).col];
 	if (square.isVisible && !square.isFood)
-	{
-	    food.erase(*p);
-	}
+	    food.erase(*p++);
+	else
+	    ++p;
     }
 
     set<Location> foodTargets;
@@ -117,13 +131,13 @@ void Bot::makeMoves()
     queue<Location> searchQueue;
     
     // update set of unseen tiles
-    for (set<Location>::iterator p = unseen.begin(); p != unseen.end(); p++) 
+    for (set<Location>::iterator p = unseen.begin(); p != unseen.end();) 
     {
 	Square& square = state.grid[(*p).row][(*p).col];
 	if (square.isVisible)
-	{
-	    unseen.erase(p);
-	}
+	    unseen.erase(*p++);
+	else
+	    ++p;
     }
 
     // initialize the search state
