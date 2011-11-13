@@ -32,6 +32,9 @@ struct Bot
     bool doMoveDirection(const Location &ant, int d);
     bool doMoveLocation(const Location &antLoc, const Location &destLoc);
     vector<Location> shortestPath(const Location &a, const Location &b);
+    void removeIf(set<Location> &locs, bool(*pred)(Square &));
+    void updateMemory(set<Location> &memory, vector<Location> &seen, bool(*pred)(Square &));
+
 };
 
 #endif //BOT_H_

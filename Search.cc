@@ -1,6 +1,6 @@
 #include "Search.h"
 
-Search::Search(const Location &start) : start(start), food(0), hills(0)
+Search::Search(const Location &start) : start(start), food(0), hills(0), unseen(0)
 {
     expanded.insert(start);
     distances[start] = 0;
