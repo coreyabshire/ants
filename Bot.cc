@@ -91,6 +91,36 @@ void Bot::makeMoves()
     queue<Location> searchQueue;
     map<Location, Location> firstAnt;
 
+    // add new hills to the set of all enemy hills
+    for (vector<Location>::iterator hillp = state.enemyHills.begin();
+	 hillp != state.enemyHills.end(); hillp++)
+    {
+	if (!enemyHills.count(*hillp))
+	{
+	    enemyHills.insert(*hillp);
+	}
+    }
+
+    // remove destroyed hills from the list of hills
+    for (set<Location>::iterator hillp = enemyHills.begin();
+	 hillp != enemyHills.end(); hillp++)
+    {
+	if (sortedAnts.count(*hillp))
+	{
+	    enemyHills.erase(*hillp);
+	}
+    }
+
+    // update set of unseen tiles
+    for (set<Location>::iterator locp = unseen.begin(); locp != unseen.end(); locp++) 
+    {
+	Square& square = state.grid[(*locp).row][(*locp).col];
+	if (square.isVisible)
+	{
+	    unseen.erase(locp);
+	}
+    }
+
     // calculate distance maps to allow shortest path searches
     for (vector<Location>::iterator antp = state.myAnts.begin();
 	 antp != state.myAnts.end(); antp++)
@@ -134,36 +164,6 @@ void Bot::makeMoves()
 		searchQueue.push(antLoc);
 	    }
 	    searchQueue.pop();
-	}
-    }
-
-    // add new hills to the set of all enemy hills
-    for (vector<Location>::iterator hillp = state.enemyHills.begin();
-	 hillp != state.enemyHills.end(); hillp++)
-    {
-	if (!enemyHills.count(*hillp))
-	{
-	    enemyHills.insert(*hillp);
-	}
-    }
-
-    // remove destroyed hills from the list of hills
-    for (set<Location>::iterator hillp = enemyHills.begin();
-	 hillp != enemyHills.end(); hillp++)
-    {
-	if (sortedAnts.count(*hillp))
-	{
-	    enemyHills.erase(*hillp);
-	}
-    }
-
-    // update set of unseen tiles
-    for (set<Location>::iterator locp = unseen.begin(); locp != unseen.end(); locp++) 
-    {
-	Square& square = state.grid[(*locp).row][(*locp).col];
-	if (square.isVisible)
-	{
-	    unseen.erase(locp);
 	}
     }
 
