@@ -5,6 +5,8 @@ MyBot2
 *.zip
 debug.txt
 bug*.txt
+time.txt
 tools/
 game_logs/
 *~
+.Rhistory

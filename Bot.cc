@@ -88,22 +88,24 @@ void Bot::makeMoves()
     set<Location> sortedAnts(state.myAnts.begin(), state.myAnts.end());
     set<Location> sortedHills(state.myHills.begin(), state.myHills.end());
     map<Location, Search> searches;
-
-
+    queue<Location> searchQueue;
+    map<Location, Location> firstAnt;
 
     // calculate distance maps to allow shortest path searches
-    for (set<Location>::iterator antp = sortedAnts.begin();
-	 antp != sortedAnts.end(); antp++)
+    for (vector<Location>::iterator antp = state.myAnts.begin();
+	 antp != state.myAnts.end(); antp++)
     {
 	searches[*antp] = Search(*antp);
+	searchQueue.push(*antp);
+	firstAnt[*antp] = *antp;
 	state.bug << "calculated search for " << *antp << endl;
 	state.bug << "distance map contains " << searches[*antp].distances.size() << " entries" << endl;
     }
-    for (set<Location>::iterator antp = sortedAnts.begin();
-	 antp != sortedAnts.end(); antp++)
+    while (!searchQueue.empty())
     {
-	Search &search = searches[*antp];
-	while (!search.remaining.empty())
+	Location& antLoc = searchQueue.front();
+	Search &search = searches[antLoc];
+	if (!search.remaining.empty())
 	{
 	    Location& u = search.remaining.front();
 	    for (int d = 0; d < TDIRECTIONS; d++)
@@ -121,6 +123,11 @@ void Bot::makeMoves()
 		}
 	    }
 	    search.remaining.pop();
+	    if (!search.remaining.empty())
+	    {
+		searchQueue.push(antLoc);
+	    }
+	    searchQueue.pop();
 	}
     }
 
@@ -263,7 +270,7 @@ void Bot::makeMoves()
 	}
     }
 
-    state.bug << "time taken: " << state.timer.getTime() << "ms" << endl << endl;
+    state.bug << "time taken: " << state.timer.getTime() << endl << endl;
 };
 
 //finishes the turn
