@@ -2,12 +2,9 @@
 
 using namespace std;
 
-Bot *bot;
-
 //constructor
 Bot::Bot()
 {
-    bot = this;
 };
 
 //plays a single game of Ants.
@@ -130,13 +127,12 @@ void Bot::makeMoves()
     set<Location> remainingFood(food.begin(), food.end());
     set<Location> unassignedAnts(state.myAnts.begin(), state.myAnts.end());
     map<Location,int> distances;
-    queue<Location> searchQueue;
+    deque<Location> searchQueue(state.myAnts.begin(), state.myAnts.end());
     
     // initialize the search state
     for (vector<Location>::iterator p = state.myAnts.begin(); p != state.myAnts.end(); p++)
     {
 	searches[*p] = Search(*p);
-	searchQueue.push(*p);
     }
 
     // search breadth first across all ants iteratively
@@ -209,11 +205,11 @@ void Bot::makeMoves()
 		{
 		    if (!remainingFood.empty() || (search.food == 0 && search.hills == 0 && search.unseen == 0))
 		    {
-			searchQueue.push(antLoc);
+			searchQueue.push_back(antLoc);
 		    }
 		}
 	    }
-	    searchQueue.pop();
+	    searchQueue.pop_front();
 	}
     }
 
