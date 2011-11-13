@@ -134,7 +134,10 @@ void State::updateVisionInformation()
 
                 if(!visited[nLoc.row][nLoc.col] && distance(sLoc, nLoc) <= viewradius)
                 {
-                    grid[nLoc.row][nLoc.col].isVisible = 1;
+		    Square &square = grid[nLoc.row][nLoc.col];
+                    square.isVisible = 1;
+                    square.isSeen = 1;
+                    square.lastSeen = turn;
                     locQueue.push(nLoc);
                 }
                 visited[nLoc.row][nLoc.col] = 1;

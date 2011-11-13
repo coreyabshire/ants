@@ -16,9 +16,9 @@ void Bot::playGame()
     state.setup();
 
     // determine all currently unseen tiles
-    for (int row = 0; row < state.rows; row += 5)
+    for (int row = 0; row < state.rows; row += 4)
     {
-	for (int col = 0; col < state.cols; col += 5)
+	for (int col = 0; col < state.cols; col += 4)
 	{
 	    unseen.insert(Location(row, col));
 	}
@@ -79,7 +79,6 @@ void Bot::makeMoves()
     enemyHills.insert(state.enemyHills.begin(), state.enemyHills.end());
 
     // remove destroyed hills from the list of hills
-//    remove_if(enemyHills.begin(), enemyHills.end(), isVisibleNotHill); 
     for (set<Location>::iterator p = enemyHills.begin(); p != enemyHills.end(); p++)
     {
 	Square& square = state.grid[(*p).row][(*p).col];
@@ -171,6 +170,8 @@ void Bot::makeMoves()
 	    {
 	    }
 
+	    // Expand this location for this ant, so that the neighboring
+	    // locations are inspected the next time its this ants turn.
 	    for (int d = 0; d < TDIRECTIONS; d++)
 	    {
 		Location v = state.getLocation(u, d);
