@@ -66,19 +66,10 @@ bool Bot::doMoveLocation(const Location &antLoc, const Location &destLoc)
     return false;
 }
 
-bool visibleNotSquare(const Location& p)
-{
-    Square& square = bot->state.grid[p.row][p.col];
-    return square.isVisible && !square.isHill;
-}
-
 //makes the bots moves for the turn
 void Bot::makeMoves()
 {
     orders.clear();
-
-    set<Location> destroyedHills;
-    set<Location> consumedFood;
 
     // keep ants from moving onto our own hills and preventing spawning
     orders.insert(state.myHills.begin(), state.myHills.end());
@@ -98,9 +89,6 @@ void Bot::makeMoves()
 	else
 	    ++p;
     }
-
-    // remove destroyed hills
-    enemyHills.erase(destroyedHills.begin(), destroyedHills.end());
 
     // add new food to the set of all known food
     food.insert(state.food.begin(), state.food.end());
