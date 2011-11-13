@@ -108,6 +108,12 @@ void Bot::makeMoves()
 	if (!search.remaining.empty())
 	{
 	    Location& u = search.remaining.front();
+
+	    if (sortedFood.count(u))
+	    {
+		foodRoutes.push_back(Route(antLoc, u, search.distances[u]));
+	    }
+
 	    for (int d = 0; d < TDIRECTIONS; d++)
 	    {
 		Location v = state.getLocation(u, d);
@@ -161,21 +167,7 @@ void Bot::makeMoves()
 	}
     }
 
-    // calculate distance from each ant to each food
-    for (set<Location>::iterator foodp = sortedFood.begin();
-	 foodp != sortedFood.end(); foodp++)
-    {
-	for (set<Location>::iterator antp = sortedAnts.begin();
-	     antp != sortedAnts.end(); antp++)
-	{
-	    int distance = searches[*antp].distance(*foodp);
-	    state.bug << "distance from " << *antp << " to " << *foodp << " is " << distance << endl;
-	    foodRoutes.push_back(Route(*antp, *foodp, distance));
-	}
-    }
-
     // assign ants to the closest food
-    sort(foodRoutes.begin(), foodRoutes.end());
     for (vector<Route>::iterator routep = foodRoutes.begin();
 	 routep != foodRoutes.end(); routep++)
     {
