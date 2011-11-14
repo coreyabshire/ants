@@ -224,7 +224,7 @@ void Bot::makeMoves()
     map<Location, Search> searches;
     
     // initialize the search state
-    for (vector<Location>::iterator p = state.myAnts.begin(); p != state.myAnts.end(); p++)
+    for (set<Location>::iterator p = myAnts.begin(); p != myAnts.end(); p++)
     {
 	searches[*p] = Search(*p);
     }
