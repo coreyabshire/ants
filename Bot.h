@@ -14,8 +14,9 @@ using namespace std;
 /*
     This struct represents your bot in the game of Ants
 */
-struct Bot
+class Bot
 {
+public:
     State state;
     set<Location> orders;
     set<Location> unseen;

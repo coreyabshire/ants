@@ -7,8 +7,9 @@
 /*
     struct for representing a square in the grid.
 */
-struct Square
+class Square
 {
+public:
     bool isVisible, isWater, isHill, isFood, isSeen;
     int ant, hillPlayer, lastSeen;
     std::vector<int> deadAnts;

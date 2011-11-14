@@ -7,8 +7,9 @@
 /*
     struct for representing a square in the grid.
 */
-struct Route
+class Route
 {
+public:
     Location start;
     Location end;
     int distance;

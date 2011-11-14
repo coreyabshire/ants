@@ -6,8 +6,9 @@
 #include "Location.h"
 #include "State.h"
 
-struct Search
+class Search
 {
+public:
     Location start;
     Location nearestMyAnt;
     Location nearestEnemyAnt;

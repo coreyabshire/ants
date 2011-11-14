@@ -10,8 +10,9 @@
     #include <io.h>
     #include <windows.h>
 
-    struct Timer
+    class Timer
     {
+    public:
         clock_t startTime, currentTime;
 
         Timer()
@@ -33,8 +34,9 @@
     };
 
 #else //Mac/Linux Timer
-    struct Timer
+    class Timer
     {
+    public:
         timeval timer;
         double startTime, currentTime;
 

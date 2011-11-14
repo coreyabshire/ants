@@ -6,8 +6,9 @@
 /*
     struct for representing locations in the grid.
 */
-struct Location
+class Location
 {
+public:
     int row, col;
 
     Location()

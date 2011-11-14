@@ -27,8 +27,9 @@ const int NORTH = 0, EAST = 1, SOUTH = 2, WEST = 3;
 /*
     struct to store current state information
 */
-struct State
+class State
 {
+public:
     /*
         Variables
     */
