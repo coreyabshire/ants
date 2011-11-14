@@ -35,6 +35,10 @@ struct Bot
     void insertAll(set<Location> &to, vector<Location> &from);
     void removeIf(set<Location> &locs, bool(*pred)(Square &));
     void updateMemory(set<Location> &memory, vector<Location> &seen, bool(*pred)(Square &));
+    void search(map<Location, Search> &searches,
+		vector<Route> &foodRoutes,
+		vector<Route> &hillRoutes,
+		vector<Route> &unseenRoutes);
 
 };
 

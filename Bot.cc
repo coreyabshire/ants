@@ -102,43 +102,17 @@ void Bot::updateMemory(set<Location> &memory, vector<Location> &seen, bool(*pred
     removeIf(memory, pred);
 }
 
-//makes the bots moves for the turn
-void Bot::makeMoves()
+void Bot::search(map<Location, Search> &searches,
+		 vector<Route> &foodRoutes,
+		 vector<Route> &hillRoutes,
+		 vector<Route> &unseenRoutes)
 {
-    orders.clear();
-
-    // keep ants from moving onto our own hills and preventing spawning
-    insertAll(orders, state.myHills);
-    
-    state.bug << "turn " << state.turn << ":" << endl;
-    state.bug << state << endl;
-    state.bug << "unseen " << unseen.size() << endl;
-
-    updateMemory(enemyHills, state.enemyHills, isVisibleAndNotHill);
-    updateMemory(food, state.food, isVisibleAndNotFood);
-    updateMemory(enemyAnts, state.enemyAnts, isVisibleAndNotEnemy);
-    updateMemory(myAnts, state.myAnts, isVisibleAndNotMyAnt);
-    updateMemory(myHills, state.myHills, isVisibleAndNotHill);
-    removeIf(unseen, isVisible);
-
-    set<Location> antsUsed;
-    vector<Route> foodRoutes;
-    vector<Route> hillRoutes;
-    vector<Route> unseenRoutes;
-    map<Location,Location> foodAnts;
-    map<Location, Search> searches;
+    deque<Location> searchQueue(state.myAnts.begin(), state.myAnts.end());
+    set<Location> unassignedAnts(state.myAnts.begin(), state.myAnts.end());
     set<Location> remainingFood(food.begin(), food.end());
     set<Location> remainingHills(enemyHills.begin(), enemyHills.end());
     set<Location> remainingUnseen(unseen.begin(), unseen.end());
-    set<Location> unassignedAnts(state.myAnts.begin(), state.myAnts.end());
     map<Location,int> distances;
-    deque<Location> searchQueue(state.myAnts.begin(), state.myAnts.end());
-    
-    // initialize the search state
-    for (vector<Location>::iterator p = state.myAnts.begin(); p != state.myAnts.end(); p++)
-    {
-	searches[*p] = Search(*p);
-    }
 
     // search breadth first across all ants iteratively
     while (!searchQueue.empty())
@@ -222,6 +196,40 @@ void Bot::makeMoves()
 	    searchQueue.pop_front();
 	}
     }
+}
+
+//makes the bots moves for the turn
+void Bot::makeMoves()
+{
+    orders.clear();
+
+    // keep ants from moving onto our own hills and preventing spawning
+    insertAll(orders, state.myHills);
+    
+    state.bug << "turn " << state.turn << ":" << endl;
+    state.bug << state << endl;
+    state.bug << "unseen " << unseen.size() << endl;
+
+    updateMemory(enemyHills, state.enemyHills, isVisibleAndNotHill);
+    updateMemory(food, state.food, isVisibleAndNotFood);
+    updateMemory(enemyAnts, state.enemyAnts, isVisibleAndNotEnemy);
+    updateMemory(myAnts, state.myAnts, isVisibleAndNotMyAnt);
+    updateMemory(myHills, state.myHills, isVisibleAndNotHill);
+    removeIf(unseen, isVisible);
+
+    set<Location> antsUsed;
+    vector<Route> foodRoutes;
+    vector<Route> hillRoutes;
+    vector<Route> unseenRoutes;
+    map<Location, Search> searches;
+    
+    // initialize the search state
+    for (vector<Location>::iterator p = state.myAnts.begin(); p != state.myAnts.end(); p++)
+    {
+	searches[*p] = Search(*p);
+    }
+
+    search(searches, foodRoutes, hillRoutes, unseenRoutes);
 
     // assign ants to the closest food
     doMoveRoutes(foodRoutes, searches, antsUsed);
