@@ -110,6 +110,7 @@ void Bot::makeMoves()
     
     state.bug << "turn " << state.turn << ":" << endl;
     state.bug << state << endl;
+    state.bug << "unseen " << unseen.size() << endl;
 
     updateMemory(enemyHills, state.enemyHills, isVisibleAndNotHill);
     updateMemory(food, state.food, isVisibleAndNotFood);
@@ -125,6 +126,7 @@ void Bot::makeMoves()
     set<Location> sortedHills(state.myHills.begin(), state.myHills.end());
     map<Location, Search> searches;
     set<Location> remainingFood(food.begin(), food.end());
+    set<Location> remainingUnseen(unseen.begin(), unseen.end());
     set<Location> unassignedAnts(state.myAnts.begin(), state.myAnts.end());
     map<Location,int> distances;
     deque<Location> searchQueue(state.myAnts.begin(), state.myAnts.end());
@@ -147,7 +149,7 @@ void Bot::makeMoves()
 	    // If this location has one of the remaining food, then assign
 	    // the current ant to collect it.  Ants may be assigned multiple
 	    // food, but each food will only be assigned to one ant.
-	    if (remainingFood.count(u))
+	    if (remainingFood.count(u) && search.hills == 0)
 	    {
 		foodRoutes.push_back(Route(antLoc, u, search.distances[u]));
 		remainingFood.erase(u);
@@ -165,9 +167,10 @@ void Bot::makeMoves()
 
 	    // If this location has not been seen by any ant, then assign
 	    // the current ant to try to see it.
-	    if (unseen.count(u) && search.food == 0 && search.hills == 0)
+	    if (remainingUnseen.count(u) && search.food == 0 && search.hills == 0)
 	    {
 		unseenRoutes.push_back(Route(antLoc, u, search.distances[u]));
+		remainingUnseen.erase(u);
 		search.unseen++;
 	    }
 
