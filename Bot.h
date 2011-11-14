@@ -24,7 +24,7 @@ struct Bot
     Bot();
 
     void playGame();    //plays a single game of Ants
-
+    void setup();       //set up the bot on initial turn
     void makeMoves();   //makes moves for a single turn
     void endTurn();     //indicates to the engine that it has made its moves
 

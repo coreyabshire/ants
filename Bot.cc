@@ -13,16 +13,7 @@ void Bot::playGame()
     //reads the game parameters and sets up
     cin >> state;
     state.setup();
-
-    // determine all currently unseen tiles
-    for (int row = 0; row < state.rows; row += 4)
-    {
-	for (int col = 0; col < state.cols; col += 4)
-	{
-	    unseen.insert(Location(row, col));
-	}
-    }
-
+    setup();
     endTurn();
 
     //continues making moves while the game is not over
@@ -33,6 +24,18 @@ void Bot::playGame()
         endTurn();
     }
 };
+
+void Bot::setup()
+{
+    // determine all currently unseen tiles
+    for (int row = 0; row < state.rows; row += 4)
+    {
+	for (int col = 0; col < state.cols; col += 4)
+	{
+	    unseen.insert(Location(row, col));
+	}
+    }
+}
 
 bool Bot::doMoveDirection(const Location &antLoc, int d)
 {
