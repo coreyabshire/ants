@@ -19,8 +19,7 @@ struct Bot
     State state;
     set<Location> orders;
     set<Location> unseen;
-    set<Location> enemyHills;
-    set<Location> food;
+    set<Location> myAnts, myHills, enemyAnts, enemyHills, food;
 
     Bot();
 

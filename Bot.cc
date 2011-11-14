@@ -78,6 +78,8 @@ bool Bot::doMoveRoutes(vector<Route>& routes, map<Location, Search> &searches, s
 
 inline bool isVisibleAndNotHill(Square &s) { return s.isVisible && !s.isHill; }
 inline bool isVisibleAndNotFood(Square &s) { return s.isVisible && !s.isFood; }
+inline bool isVisibleAndNotEnemy(Square &s) { return s.isVisible && s.ant <= 0; }
+inline bool isVisibleAndNotMyAnt(Square &s) { return s.isVisible && s.ant != 0; }
 inline bool isVisible(Square &s) { return s.isVisible; }
 
 void Bot::insertAll(set<Location> &to, vector<Location> &from)
@@ -114,6 +116,9 @@ void Bot::makeMoves()
 
     updateMemory(enemyHills, state.enemyHills, isVisibleAndNotHill);
     updateMemory(food, state.food, isVisibleAndNotFood);
+    updateMemory(enemyAnts, state.enemyAnts, isVisibleAndNotEnemy);
+    updateMemory(myAnts, state.myAnts, isVisibleAndNotMyAnt);
+    updateMemory(myHills, state.myHills, isVisibleAndNotHill);
     removeIf(unseen, isVisible);
 
     set<Location> antsUsed;
@@ -121,11 +126,9 @@ void Bot::makeMoves()
     vector<Route> hillRoutes;
     vector<Route> unseenRoutes;
     map<Location,Location> foodAnts;
-    set<Location> sortedFood(food.begin(), food.end());
-    set<Location> sortedAnts(state.myAnts.begin(), state.myAnts.end());
-    set<Location> sortedHills(state.myHills.begin(), state.myHills.end());
     map<Location, Search> searches;
     set<Location> remainingFood(food.begin(), food.end());
+    set<Location> remainingHills(enemyHills.begin(), enemyHills.end());
     set<Location> remainingUnseen(unseen.begin(), unseen.end());
     set<Location> unassignedAnts(state.myAnts.begin(), state.myAnts.end());
     map<Location,int> distances;
@@ -156,12 +159,24 @@ void Bot::makeMoves()
 		search.food++;
 		unassignedAnts.erase(antLoc);
 	    }
-	    
+
+	    if (myAnts.count(u))
+	    {
+		search.nearestMyAnt = u;
+	    }
+
+	    if (enemyAnts.count(u))
+	    {
+		search.nearestEnemyAnt = u;
+	    }
+
 	    // If this location has an enemy hill, then assign the current
 	    // ant to attack it unless it is already assigned to collect food.
 	    if (enemyHills.count(u) && search.food == 0)
 	    {
 		hillRoutes.push_back(Route(antLoc, u, search.distances[u]));
+		remainingHills.erase(u);
+		unassignedAnts.erase(antLoc);
 		search.hills++;
 	    }
 
@@ -172,14 +187,6 @@ void Bot::makeMoves()
 		unseenRoutes.push_back(Route(antLoc, u, search.distances[u]));
 		remainingUnseen.erase(u);
 		search.unseen++;
-	    }
-
-	    // If there is already an ant at this location, then any hill
-	    // or food we find will be closer to this ant, so it doesn't make
-	    // sense to expand it any more. Instead, we may want to just
-	    // move towards this ant to replace it if it moves.
-	    if (sortedAnts.count(u))
-	    {
 	    }
 
 	    // Expand this location for this ant, so that the neighboring
@@ -206,7 +213,7 @@ void Bot::makeMoves()
 	    {
 		if (!unassignedAnts.empty()) 
 		{
-		    if (!remainingFood.empty() || (search.food == 0 && search.hills == 0 && search.unseen == 0))
+		    if (!remainingFood.empty() || (search.hills == 0 && search.food == 0 && search.unseen == 0))
 		    {
 			searchQueue.push_back(antLoc);
 		    }
@@ -230,14 +237,14 @@ void Bot::makeMoves()
 	      << hillRoutes.size() << " "
 	      << unseenRoutes.size() << endl;
 
-    state.bug << "ant count 1: " << antsUsed.size() << " of " << sortedAnts.size() << endl;
+    state.bug << "ant count 1: " << antsUsed.size() << " of " << myAnts.size() << endl;
     
     // have remaining ants stay where they are, so hill unblocking doesn't destroy ants
-    for (set<Location>::iterator p = sortedAnts.begin(); p != sortedAnts.end(); p++)
+    for (set<Location>::iterator p = myAnts.begin(); p != myAnts.end(); p++)
     {
 	if (!antsUsed.count(*p))
 	{
-	    if (!sortedHills.count(*p)) 
+	    if (!myHills.count(*p)) 
 	    {
 		orders.insert(*p);
 		antsUsed.insert(*p);
@@ -246,14 +253,13 @@ void Bot::makeMoves()
     }
 
     // unblock hills
-    for (set<Location>::iterator hillp = sortedHills.begin();
-	 hillp != sortedHills.end(); hillp++)
+    for (set<Location>::iterator p = myHills.begin(); p != myHills.end(); p++)
     {
-	if (sortedAnts.count(*hillp) && !antsUsed.count(*hillp))
+	if (myAnts.count(*p) && !antsUsed.count(*p))
 	{
 	    for (int d = 0; d < TDIRECTIONS; d++)
 	    {
-		if (doMoveDirection(*hillp, d))
+		if (doMoveDirection(*p, d))
 		{
 		    break;
 		}
