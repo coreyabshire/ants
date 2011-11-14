@@ -245,36 +245,6 @@ void Bot::makeMoves()
 	      << hillRoutes.size() << " "
 	      << unseenRoutes.size() << endl;
 
-    state.bug << "ant count 1: " << antsUsed.size() << " of " << myAnts.size() << endl;
-    
-    // have remaining ants stay where they are, so hill unblocking doesn't destroy ants
-    for (set<Location>::iterator p = myAnts.begin(); p != myAnts.end(); p++)
-    {
-	if (!antsUsed.count(*p))
-	{
-	    if (!myHills.count(*p)) 
-	    {
-		orders.insert(*p);
-		antsUsed.insert(*p);
-	    }
-	}
-    }
-
-    // unblock hills
-    for (set<Location>::iterator p = myHills.begin(); p != myHills.end(); p++)
-    {
-	if (myAnts.count(*p) && !antsUsed.count(*p))
-	{
-	    for (int d = 0; d < TDIRECTIONS; d++)
-	    {
-		if (doMoveDirection(*p, d))
-		{
-		    break;
-		}
-	    }
-	}
-    }
-
     state.bug << "time taken: " << state.timer.getTime() << endl << endl;
 };
 
