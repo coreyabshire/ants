@@ -1,20 +1,17 @@
 #include "Route.h"
 
-Route::Route(const Location& start, const Location& end, int distance) :
-    start(start), end(end), distance(distance)
+Route::Route(const Location& start, const Location& end, map<Location,Location> &p)
 {
+  for (Location c = end; c != start; c = p[c]) {
+    steps.push_front(c);
+    distance++;
+  }
+  steps.push_front(start);
+  distance++;
 };
 
 bool operator<(const Route &a, const Route &b) {
-  if (a.distance < b.distance)
-    return true;
-  else if (a.distance > b.distance)
-    return false;
-  else 
-    if (a.start == b.start) 
-      return a.end < b.end;
-    else
-      return a.start < b.start;
+  return a.distance < b.distance;
 }
 
 bool operator==(const Route &a, const Route &b) {

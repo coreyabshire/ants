@@ -9,8 +9,6 @@
 class Search {
  public:
   Location start;
-  Location nearestMyAnt;
-  Location nearestEnemyAnt;
   std::map<Location,int> distances;
   std::map<Location,Location> predecessors;
   std::set<Location> expanded;
