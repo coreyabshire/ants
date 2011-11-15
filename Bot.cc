@@ -1,19 +1,17 @@
 #include "Bot.h"
 
-using namespace std;
-
-//constructor
+// constructor
 Bot::Bot() {};
 
-//plays a single game of Ants.
+// plays a single game of Ants.
 void Bot::playGame() {
-  //reads the game parameters and sets up
+  // reads the game parameters and sets up
   cin >> state;
   state.setup();
   setup();
   endTurn();
 
-  //continues making moves while the game is not over
+  // continues making moves while the game is not over
   while (cin >> state) {
     state.updateVisionInformation();
     makeMoves();
@@ -30,6 +28,14 @@ void Bot::setup() {
   }
 }
 
+// finishes the turn
+void Bot::endTurn() {
+  if(state.turn > 0)
+    state.reset();
+  state.turn++;
+  cout << "go" << endl;
+}
+
 bool Bot::doMoveDirection(const Location &antLoc, int d) {
   Location newLoc = state.getLocation(antLoc, d);
   Square& square = state.grid[newLoc.row][newLoc.col];
@@ -43,10 +49,10 @@ bool Bot::doMoveDirection(const Location &antLoc, int d) {
   }
 }
 
-bool Bot::doMoveLocation(const Location &antLoc, const Location &destLoc) {
-  vector<int> directions = state.getDirections(antLoc, destLoc);
-  for (vector<int>::iterator dp = directions.begin(); dp != directions.end(); dp++) {
-    if (doMoveDirection(antLoc, *dp)) {
+bool Bot::doMoveLocation(const Location &a, const Location &b) {
+  vector<int> ds = state.getDirections(a, b);
+  for (vector<int>::iterator dp = ds.begin(); dp != ds.end(); dp++) {
+    if (doMoveDirection(a, *dp)) {
       return true;
     }
   }
@@ -94,7 +100,8 @@ bool Bot::search(Location &start, set<Location> &ends, Route &route) {
   map<Location,Location> predecessors;
   set<Location> expanded;
   queue<Location> remaining;
-    
+  
+  remaining.push(start);
   while (!remaining.empty()) {
     Location& u = remaining.front();
 
@@ -118,7 +125,7 @@ bool Bot::search(Location &start, set<Location> &ends, Route &route) {
     }
     remaining.pop();
   }
-    
+
   return false;
 }
 
@@ -204,7 +211,7 @@ void Bot::search(map<Location, Search> &searches,
   }
 }
 
-//makes the bots moves for the turn
+// makes the bots moves for the turn
 void Bot::makeMoves() {
   orders.clear();
 
@@ -223,39 +230,20 @@ void Bot::makeMoves() {
   removeIf(unseen, isVisible);
 
   set<Location> antsUsed;
-  vector<Route> foodRoutes;
-  vector<Route> hillRoutes;
-  vector<Route> unseenRoutes;
+  vector<Route> froutes, hroutes, uroutes;
   map<Location, Search> searches;
     
-  // initialize the search state
   for (set<Location>::iterator p = myAnts.begin(); p != myAnts.end(); p++) {
     searches[*p] = Search(*p);
   }
 
-  search(searches, myAnts, foodRoutes, hillRoutes, unseenRoutes);
+  search(searches, myAnts, froutes, hroutes, uroutes);
+  doMoveRoutes(froutes, searches, antsUsed);
+  doMoveRoutes(hroutes, searches, antsUsed);
+  doMoveRoutes(uroutes, searches, antsUsed);
 
-  // assign ants to the closest food
-  doMoveRoutes(foodRoutes, searches, antsUsed);
-
-  // assign ants to destroy enemy hills
-  doMoveRoutes(hillRoutes, searches, antsUsed);
-
-  // explore unseen areas
-  doMoveRoutes(unseenRoutes, searches, antsUsed);
-
-  state.bug << "route counts: "
-            << foodRoutes.size() << " "
-            << hillRoutes.size() << " "
-            << unseenRoutes.size() << endl;
+  state.bug << "routes: " << froutes.size() << " " << hroutes.size()
+            << " " << uroutes.size() << endl;
 
   state.bug << "time taken: " << state.timer.getTime() << endl << endl;
-};
-
-//finishes the turn
-void Bot::endTurn() {
-  if(state.turn > 0)
-    state.reset();
-  state.turn++;
-  cout << "go" << endl;
-};
+}

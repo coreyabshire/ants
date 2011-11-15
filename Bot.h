@@ -11,23 +11,18 @@
 
 using namespace std;
 
-/*
-  This struct represents your bot in the game of Ants
-*/
-class Bot
-{
-public:
+class Bot {
+ public:
   State state;
+  Bot();
+  void playGame();   //plays a single game of Ants
+  void setup();      //set up the bot on initial turn
+  void makeMoves();  //makes moves for a single turn
+  void endTurn();    //indicates to the engine that it has made its moves
+
   set<Location> orders;
   set<Location> unseen;
   set<Location> myAnts, myHills, enemyAnts, enemyHills, food;
-
-  Bot();
-
-  void playGame();    //plays a single game of Ants
-  void setup();       //set up the bot on initial turn
-  void makeMoves();   //makes moves for a single turn
-  void endTurn();     //indicates to the engine that it has made its moves
 
   bool doMoveDirection(const Location &ant, int d);
   bool doMoveLocation(const Location &antLoc, const Location &destLoc);
@@ -43,7 +38,6 @@ public:
               vector<Route> &foodRoutes,
               vector<Route> &hillRoutes,
               vector<Route> &unseenRoutes);
-
 };
 
 #endif //BOT_H_
