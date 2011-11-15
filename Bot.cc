@@ -105,13 +105,54 @@ void Bot::updateMemory(set<Location> &memory, vector<Location> &seen, bool(*pred
     removeIf(memory, pred);
 }
 
+// find the shortest route to the nearest end to start
+bool Bot::search(Location &start, set<Location> &ends, Route &route)
+{
+    std::map<Location,int> distances;
+    std::map<Location,Location> predecessors;
+    std::set<Location> expanded;
+    std::queue<Location> remaining;
+    
+    while (!remaining.empty())
+    {
+	Location& u = remaining.front();
+
+	if (ends.count(u))
+	{
+	    route.start = start;
+	    route.end = u;
+	    route.distance = distances[u];
+	    return true;
+	}
+
+	for (int d = 0; d < TDIRECTIONS; d++)
+	{
+	    Location v = state.getLocation(u, d);
+	    if (!state.grid[v.row][v.col].isWater) 
+	    {
+		if (!expanded.count(v))
+		{
+		    expanded.insert(v);
+		    distances[v] = distances[u] + 1;
+		    predecessors[v] = u;
+		    remaining.push(v);
+		}
+	    }
+	}
+	remaining.pop();
+    }
+    
+    return false;
+}
+
 void Bot::search(map<Location, Search> &searches,
+		 set<Location> &sources,
 		 vector<Route> &foodRoutes,
 		 vector<Route> &hillRoutes,
 		 vector<Route> &unseenRoutes)
 {
-    deque<Location> searchQueue(state.myAnts.begin(), state.myAnts.end());
-    set<Location> unassignedAnts(state.myAnts.begin(), state.myAnts.end());
+    deque<Location> searchQueue(sources.begin(), sources.end());
+    set<Location> unassignedAnts(sources.begin(), sources.end());
     set<Location> remainingFood(food.begin(), food.end());
     set<Location> remainingHills(enemyHills.begin(), enemyHills.end());
     set<Location> remainingUnseen(unseen.begin(), unseen.end());
@@ -232,7 +273,7 @@ void Bot::makeMoves()
 	searches[*p] = Search(*p);
     }
 
-    search(searches, foodRoutes, hillRoutes, unseenRoutes);
+    search(searches, myAnts, foodRoutes, hillRoutes, unseenRoutes);
 
     // assign ants to the closest food
     doMoveRoutes(foodRoutes, searches, antsUsed);

@@ -36,7 +36,9 @@ public:
     void insertAll(set<Location> &to, vector<Location> &from);
     void removeIf(set<Location> &locs, bool(*pred)(Square &));
     void updateMemory(set<Location> &memory, vector<Location> &seen, bool(*pred)(Square &));
+    bool search(Location &start, set<Location> &ends, Route &route);
     void search(map<Location, Search> &searches,
+		set<Location> &sources,
 		vector<Route> &foodRoutes,
 		vector<Route> &hillRoutes,
 		vector<Route> &unseenRoutes);
