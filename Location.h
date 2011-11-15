@@ -3,25 +3,13 @@
 
 #include <iostream>
 
-/*
-  struct for representing locations in the grid.
-*/
-class Location
-{
-public:
-  int row, col;
-
-  Location() {
-    row = col = 0;
-  };
-  
+// A grid location.
+class Location {
+ public:
+  short int row, col;
+  Location() : row(0), col(0) {};
   Location(const Location& loc) : row(loc.row), col(loc.col) {};
-
-  Location(int r, int c) {
-    row = r;
-    col = c;
-  };
-
+  Location(int r, int c) : row(r), col(c) {};
 };
 
 bool operator<(const Location &a, const Location &b);

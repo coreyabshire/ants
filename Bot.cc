@@ -14,7 +14,7 @@ void Bot::playGame() {
   endTurn();
 
   //continues making moves while the game is not over
-  while(cin >> state) {
+  while (cin >> state) {
     state.updateVisionInformation();
     makeMoves();
     endTurn();
@@ -33,17 +33,17 @@ void Bot::setup() {
 bool Bot::doMoveDirection(const Location &antLoc, int d) {
   Location newLoc = state.getLocation(antLoc, d);
   Square& square = state.grid[newLoc.row][newLoc.col];
-  if(!square.isWater && !orders.count(newLoc)) {
+  if (!square.isWater && !orders.count(newLoc)) {
     orders.insert(newLoc);
     state.makeMove(antLoc, d);
     return true;
-  } else {
+  }
+  else {
     return false;
   }
 }
 
-bool Bot::doMoveLocation(const Location &antLoc, const Location &destLoc)
-{
+bool Bot::doMoveLocation(const Location &antLoc, const Location &destLoc) {
   vector<int> directions = state.getDirections(antLoc, destLoc);
   for (vector<int>::iterator dp = directions.begin(); dp != directions.end(); dp++) {
     if (doMoveDirection(antLoc, *dp)) {
@@ -90,10 +90,10 @@ void Bot::updateMemory(set<Location> &memory, vector<Location> &seen,
 
 // find the shortest route to the nearest end to start
 bool Bot::search(Location &start, set<Location> &ends, Route &route) {
-  std::map<Location,int> distances;
-  std::map<Location,Location> predecessors;
-  std::set<Location> expanded;
-  std::queue<Location> remaining;
+  map<Location,int> distances;
+  map<Location,Location> predecessors;
+  set<Location> expanded;
+  queue<Location> remaining;
     
   while (!remaining.empty()) {
     Location& u = remaining.front();
