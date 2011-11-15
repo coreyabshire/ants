@@ -10,3 +10,4 @@ tools/
 game_logs/
 *~
 .Rhistory
+temp.cc

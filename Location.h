@@ -4,25 +4,23 @@
 #include <iostream>
 
 /*
-    struct for representing locations in the grid.
+  struct for representing locations in the grid.
 */
 class Location
 {
 public:
-    int row, col;
+  int row, col;
 
-    Location()
-    {
-        row = col = 0;
-    };
+  Location() {
+    row = col = 0;
+  };
+  
+  Location(const Location& loc) : row(loc.row), col(loc.col) {};
 
-    Location(const Location& loc) : row(loc.row), col(loc.col) {};
-
-    Location(int r, int c)
-    {
-        row = r;
-        col = c;
-    };
+  Location(int r, int c) {
+    row = r;
+    col = c;
+  };
 
 };
 

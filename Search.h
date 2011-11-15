@@ -6,23 +6,21 @@
 #include "Location.h"
 #include "State.h"
 
-class Search
-{
-public:
-    Location start;
-    Location nearestMyAnt;
-    Location nearestEnemyAnt;
-    std::map<Location,int> distances;
-    std::map<Location,Location> predecessors;
-    std::set<Location> expanded;
-    std::queue<Location> remaining;
-    int food, hills, unseen;
+class Search {
+ public:
+  Location start;
+  Location nearestMyAnt;
+  Location nearestEnemyAnt;
+  std::map<Location,int> distances;
+  std::map<Location,Location> predecessors;
+  std::set<Location> expanded;
+  std::queue<Location> remaining;
+  int food, hills, unseen;
 
-    Search() {};
-    Search(const Location &start);
-    int distance(const Location& dest);
-    Location step(const Location& dest);
+  Search() {};
+  Search(const Location &start);
+  int distance(const Location& dest);
+  Location step(const Location& dest);
 };
-
 
 #endif //SEARCH_H_
