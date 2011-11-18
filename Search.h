@@ -3,7 +3,6 @@
 
 #include <map>
 #include <set>
-#include "Location.h"
 #include "State.h"
 
 class Search {

@@ -263,3 +263,66 @@ istream& operator>>(istream &is, State &state) {
 
   return is;
 }
+
+Route::Route(const Location& start, const Location& end, map<Location,Location> &p)
+{
+  for (Location c = end; c != start; c = p[c]) {
+    steps.push_front(c);
+    distance++;
+  }
+  steps.push_front(start);
+  distance++;
+};
+
+bool operator<(const Route &a, const Route &b) {
+  return a.distance < b.distance;
+}
+
+bool operator==(const Route &a, const Route &b) {
+  return a.distance == b.distance
+      && a.start == b.start
+      && a.end == b.end;
+}
+
+ostream& operator<<(ostream& os, const Route &r) {
+  os << r.start << " " << r.end << " " << r.steps.size();
+}
+    
+std::ostream& operator<<(std::ostream& os, const Square &square)
+{
+  if (square.isVisible)
+    os << "V";
+  if (square.isWater)
+    os << "W";
+  if (square.isHill)
+    os << "H";
+  if (square.isFood)
+    os << "F";
+  if (square.ant >= 0)
+    os << "," << square.ant;
+  if (square.hillPlayer >= 0)
+    os << "," << square.hillPlayer;
+}
+
+bool operator<(const Location &a, const Location &b) {
+  if (a.row < b.row)
+    return true;
+  else if (a.row > b.row) 
+    return false;
+  else
+    return a.col < b.col;
+}
+
+bool operator==(const Location &a, const Location &b) {
+  return a.row == b.row && a.col == b.col;
+}
+
+bool operator!=(const Location &a, const Location &b) {
+  return a.row != b.row || a.col != b.col;
+}
+
+std::ostream& operator<<(std::ostream &os, const Location &loc) {
+  os << "(" << loc.row << "," << loc.col << ")";
+  return os;
+}
+

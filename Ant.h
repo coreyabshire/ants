@@ -8,7 +8,6 @@
 #include <algorithm>
 #include <list>
 #include "State.h"
-#include "Route.h"
 #include "Search.h"
 
 using namespace std;
