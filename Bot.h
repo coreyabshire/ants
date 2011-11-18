@@ -8,10 +8,23 @@
 #include <algorithm>
 #include <list>
 #include "State.h"
-#include "Search.h"
-#include "Ant.h"
 
 using namespace std;
+
+class Search {
+ public:
+  Location start;
+  std::map<Location,int> distances;
+  std::map<Location,Location> predecessors;
+  std::set<Location> expanded;
+  std::queue<Location> remaining;
+  int food, hills, unseen;
+
+  Search() {};
+  Search(const Location &start);
+  int distance(const Location& dest);
+  Location step(const Location& dest);
+};
 
 class Bot {
  public:
@@ -25,7 +38,6 @@ class Bot {
   set<Location> orders;
   set<Location> unseen;
   set<Location> myAnts, myHills, enemyAnts, enemyHills, food;
-  map<Location,Ant> ants;
   list< Route > xroutes;
   int nextAntId;
 
