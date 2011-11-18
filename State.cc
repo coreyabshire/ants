@@ -50,6 +50,14 @@ double State::distance(const Location &loc1, const Location &loc2) {
   return sqrt(dr*dr + dc*dc);
 }
 
+int State::distance2(const Location &a, const Location &b) {
+  int d1 = abs(a.row - b.row),
+      d2 = abs(a.col - b.col),
+      dr = min(d1, rows - d1),
+      dc = min(d2, cols - d2);
+  return dr * dr + dc * dc;
+}
+
 // returns the euclidean distance between two locations with the edges wrapped
 int State::manhattan(const Location &a, const Location &b) {
   int r = abs(a.row - b.row),
@@ -181,16 +189,16 @@ istream& operator>>(istream &is, State &state) {
       else if(inputType == "player_seed")
         is >> state.seed;
       else if(inputType == "viewradius2") {
-        is >> state.viewradius;
-        state.viewradius = sqrt(state.viewradius);
+        is >> state.viewradius2;
+        state.viewradius = sqrt(state.viewradius2);
       } 
       else if(inputType == "attackradius2") {
-        is >> state.attackradius;
-        state.attackradius = sqrt(state.attackradius);
+        is >> state.attackradius2;
+        state.attackradius = sqrt(state.attackradius2);
       } 
       else if(inputType == "spawnradius2") {
-        is >> state.spawnradius;
-        state.spawnradius = sqrt(state.spawnradius);
+        is >> state.spawnradius2;
+        state.spawnradius = sqrt(state.spawnradius2);
       }
       else if(inputType == "ready") {
         state.timer.start();

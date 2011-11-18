@@ -16,10 +16,12 @@ class Route {
   Location end;
   int distance;
 
+  Route() {};
   Route(const Location& start, const Location& end, map<Location,Location> &p);
 };
 
 bool operator<(const Route &a, const Route &b);
 bool operator==(const Route &a, const Route &b);
+ostream& operator<<(ostream& os, const Route &r);
 
 #endif //ROUTE_H_

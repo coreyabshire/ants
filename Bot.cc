@@ -25,11 +25,9 @@ void Bot::playGame() {
 
 void Bot::setup() {
   // determine all currently unseen tiles
-  for (int row = 0; row < state.rows; row += 4) {
-    for (int col = 0; col < state.cols; col += 4) {
+  for (int row = 0; row < state.rows; row += 4)
+    for (int col = 0; col < state.cols; col += 4)
       unseen.insert(Location(row, col));
-    }
-  }
 }
 
 // finishes the turn
@@ -46,6 +44,7 @@ bool Bot::doMoveDirection(const Location &antLoc, int d) {
   if (!square.isWater && !orders.count(newLoc)) {
     orders.insert(newLoc);
     state.makeMove(antLoc, d);
+    straight[antLoc] = d;
     return true;
   }
   else {
@@ -65,6 +64,17 @@ bool Bot::doMoveLocation(const Location &a, const Location &b) {
 
 bool routeCmp(const Route &a, const Route &b) {
   return a.distance < b.distance;
+}
+
+bool Bot::doMoveRoute(Route &r, set<Location> &antsUsed) {
+  if (r.steps.size() > 1) {
+    const Location &ant = r.steps.front();
+    if (!antsUsed.count(ant) && doMoveLocation(ant, r.steps[1])) {
+      antsUsed.insert(r.steps.front());
+      r.steps.pop_front();
+      r.distance--;
+    }
+  }
 }
 
 bool Bot::doMoveRoutes(list< Route >& routes, set<Location> &antsUsed,
@@ -149,38 +159,33 @@ void Bot::search(set<Location> &sources, set<Location> &targets, list< Route > &
   }
 }
 
-void Bot::search(set<Location> &sources, set<Location> &targets, list< Route > &routes, int maxCount) {
+
+int Bot::search(set<Location> &sources, const Location &target, list< Route > &routes, int maxCount) {
   set<Location> unassignedAnts(sources.begin(), sources.end());
-  set<Location> remainingTargets(targets.begin(), targets.end());
-  map<Location,int> targetCounts;
-  set<Location> expanded;
+  int count = 0;
   deque<Location> searchQueue(unassignedAnts.begin(), unassignedAnts.end());
   map<Location, Search> searches;
   for (set<Location>::iterator p = unassignedAnts.begin(); p != unassignedAnts.end(); p++) {
     searches[*p] = Search(*p);
-  }
-  for (set<Location>::iterator p = remainingTargets.begin(); p != remainingTargets.end(); p++) {
-    targetCounts[*p] = 0;
   }
   while (!searchQueue.empty()) {
     Location& antLoc = searchQueue.front();
     Search &search = searches[antLoc];
     if (!search.remaining.empty()) {
       Location& u = search.remaining.front();
-      if (remainingTargets.count(u)) {
+      if (target == u) {
         routes.push_back(Route(antLoc, u, search.predecessors));
-        targetCounts[u]++;
-        if (targetCounts[u] >= maxCount) {
-          remainingTargets.erase(u);
-        }
+        count++;
+        if (count >= maxCount)
+          break;
         unassignedAnts.erase(antLoc);
       }
       for (int d = 0; d < TDIRECTIONS; d++) {
         Location v = state.getLocation(u, d);
         if (!state.grid[v.row][v.col].isWater) {
-          if (!expanded.count(v)) {
+          if (!search.expanded.count(v)) {
             int distance = search.distances[u] + 1;
-            expanded.insert(v);
+            search.expanded.insert(v);
             search.distances[v] = distance;
             search.predecessors[v] = u;
             search.remaining.push(v);
@@ -189,15 +194,17 @@ void Bot::search(set<Location> &sources, set<Location> &targets, list< Route > &
       }
       search.remaining.pop();
       if (!search.remaining.empty()) {
-        if (!unassignedAnts.empty() && !remainingTargets.empty()) {
+        if (!unassignedAnts.empty()) {
           searchQueue.push_back(antLoc);
         }
       }
       searchQueue.pop_front();
     }
   }
+  return count;
 }
 
+// Find a route from start to the first end it comes across.
 bool Bot::search(Location &start, set<Location> &ends, Route &route) {
   map<Location,int> distances;
   map<Location,Location> predecessors;
@@ -228,111 +235,63 @@ bool Bot::search(Location &start, set<Location> &ends, Route &route) {
   return false;
 }
 
-void Bot::search(set<Location> &sources, list< Route > &routes) {
-  set<Location> unassignedAnts(sources.begin(), sources.end());
-  set<Location> remainingFood(food.begin(), food.end());
-  set<Location> remainingHills(enemyHills.begin(), enemyHills.end());
-  set<Location> remainingUnseen(unseen.begin(), unseen.end());
-
-  for (list< Route >::iterator r = routes.begin(); r != routes.end(); r++) {
-    Location a = (*r).steps.front();
-    Location b = (*r).steps.back();
-    state.bug << "processing route " << a << " to " << b << endl;
-    if (remainingFood.count(b)) {
-      state.bug << "processing route to remove food" << endl;
-      unassignedAnts.erase(a);
-      remainingFood.erase(b);
-    }
-    else if (remainingHills.count(b)) {
-      state.bug << "processing route to remove hill" << endl;
-      unassignedAnts.erase(a);
-      remainingHills.erase(b);
-    }
-    else if (remainingUnseen.count(b)) {
-      state.bug << "processing route to remove unseen" << endl;
-      unassignedAnts.erase(a);
-      remainingUnseen.erase(b);
-    }
-    else {
-      state.bug << "processing route should not get here" << endl;
-    }
-    state.bug << "processing route " << a << " to " << b << " complete" << endl;
+class Fcmp {
+  map<Location,int> *f;
+ public:
+  Fcmp(map<Location,int> *f) : f(f) {};
+  bool operator() (const Location& a, const Location& b) const {
+    return (*f)[a] < (*f)[b];
   }
+};
 
-  deque<Location> searchQueue(unassignedAnts.begin(), unassignedAnts.end());
-  map<Location, Search> searches;
-  for (set<Location>::iterator p = unassignedAnts.begin(); p != unassignedAnts.end(); p++) {
-    searches[*p] = Search(*p);
-  }
-
-  // search breadth first across all ants iteratively
-  while (!searchQueue.empty()) {
-    Location& antLoc = searchQueue.front();
-    Search &search = searches[antLoc];
-    if (!search.remaining.empty()) {
-      Location& u = search.remaining.front();
-
-      // If this location has one of the remaining food, then assign
-      // the current ant to collect it.  Ants may be assigned multiple
-      // food, but each food will only be assigned to one ant.
-      if (remainingFood.count(u) && search.hills == 0) {
-        routes.push_back(Route(antLoc, u, search.predecessors));
-        remainingFood.erase(u);
-        search.food++;
-        unassignedAnts.erase(antLoc);
-      }
-
-      // If this location has an enemy hill, then assign the current
-      // ant to attack it unless it is already assigned to collect food.
-      if (enemyHills.count(u) && search.food == 0) {
-        routes.push_back(Route(antLoc, u, search.predecessors));
-        remainingHills.erase(u);
-        unassignedAnts.erase(antLoc);
-        search.hills++;
-      }
-
-      // If this location has not been seen by any ant, then assign
-      // the current ant to try to see it.
-      if (remainingUnseen.count(u) && search.food == 0 && search.hills == 0) {
-        routes.push_back(Route(antLoc, u, search.predecessors));
-        remainingUnseen.erase(u);
-        unassignedAnts.erase(u);
-        search.unseen++;
-      }
-
-      // Expand this location for this ant, so that the neighboring
-      // locations are inspected the next time its this ants turn.
-      for (int d = 0; d < TDIRECTIONS; d++) {
-        Location v = state.getLocation(u, d);
-        if (!state.grid[v.row][v.col].isWater) {
-          if (!search.expanded.count(v)) {
-            int distance = search.distances[u] + 1;
-            search.expanded.insert(v);
-            search.distances[v] = distance;
-            search.predecessors[v] = u;
-            search.remaining.push(v);
+// Find a route from start to the first end it comes across.
+bool Bot::search(Location &start, Location &goal, Route &route) {
+  map<Location,int> f, g, h;
+  map<Location,Location> p; // came from
+  set<Location> X; // closed
+  Fcmp fcmp(&f);
+  priority_queue<Location,vector<Location>,Fcmp> Q(fcmp); // open
+  g[start] = 0;
+  h[start] = state.manhattan(start, goal);
+  f[start] = g[start] + h[start];
+  Q.push(start);
+  while (!Q.empty()) {
+    Location u = Q.top();
+    if (u == goal) {
+      route = Route(start, goal, p);
+      return true;
+    }
+    X.insert(u);
+    Q.pop();
+    for (int d = 0; d < TDIRECTIONS; d++) {
+      Location v = state.getLocation(u, d);
+      if (!state.grid[v.row][v.col].isWater) {
+        if (!X.count(v)) {
+          if (!g.count(v) || ((g[v] + 1) < g[v])) {
+            p[v] = u;
+            g[v] = g[v] + 1;
+            h[v] = state.manhattan(v, goal);
+            f[v] = g[v] + h[v];
+            Q.push(v);
           }
         }
       }
-
-      search.remaining.pop();
-      if (!search.remaining.empty()) {
-        if (!unassignedAnts.empty()) {
-          if (!remainingFood.empty() ||
-              (search.hills == 0 && search.food == 0 && search.unseen == 0)) {
-            searchQueue.push_back(antLoc);
-          }
-        }
-      }
-      searchQueue.pop_front();
     }
   }
+  return false;
 }
 
-// makes the bots moves for the turn
+class Manhattan {
+ public:
+  int d;
+  Location a, b;
+  Manhattan(const Location &a, const Location &b, int d) : a(a), b(b), d(d) {};
+};
+bool operator<(const Manhattan &a, const Manhattan &b) { return a.d < b.d; }
+
+// Makes the ants moves for the turn.
 void Bot::makeMoves() {
   orders.clear();
-  xroutes.clear();
 
   // keep ants from moving onto our own hills and preventing spawning
   insertAll(orders, state.myHills);
@@ -348,40 +307,37 @@ void Bot::makeMoves() {
   updateMemory(myHills, state.myHills, isVisibleAndNotHill);
   removeIf(unseen, isVisible);
 
-  set<Location> antsUsed;
-  for (list< Route >::iterator r = xroutes.begin(); r != xroutes.end();) {
-    Location &a = (*r).steps.front();
-    Location &b = (*r).steps.back();
-    state.bug << "looking at route " << a << " to " << b << endl;
-    if (!myAnts.count(a)) {
-      state.bug << "erasing route because its not an ant" << endl;
-      xroutes.erase(r++);
-    }
-    else if (!food.count(b) && !enemyHills.count(b) && !unseen.count(b)) {
-      state.bug << "erasing route because its not a target" << endl;
-      xroutes.erase(r++);
-    }
-    else if ((*r).distance <= 1) {
-      state.bug << "erasing route because its too short" << endl;
-      xroutes.erase(r++);
-    }
-    else {
-      state.bug << "reusing routes " << a << " to " << b << endl;
-      ++r;
-    }
-  }
+  // determine ranges from my ants to enemy ants
+  vector<Manhattan> ranges;
+  for (set<Location>::iterator a = myAnts.begin(); a != myAnts.end(); a++)
+    for (set<Location>::iterator b = enemyAnts.begin(); b != enemyAnts.end(); b++)
+      ranges.push_back(Manhattan(*a, *b, state.distance2(*a, *b)));
+  state.bug << "range count " << ranges.size() << endl;
+  sort(ranges.begin(), ranges.end());
 
-  search(myAnts, enemyHills, xroutes, 5);
+  int pauseradius2 = (int) pow((state.attackradius + 1.0), 2);
+  set<Location> antsUsed;
+  xroutes.clear();
+  for (set<Location>::iterator p = enemyHills.begin(); p != enemyHills.end(); p++)
+    search(myAnts, *p, xroutes, 3);
+  // for (vector<Manhattan>::iterator p = ranges.begin(); p != ranges.end(); p++)
+  //   if ((*p).d < state.viewradius2) {
+  //     Route route;
+  //     if (search((*p).a, (*p).b, route)) {
+  //       doMoveRoute(route, antsUsed);
+  //       state.bug << "found route " << route << endl;
+  //     }
+  //   }
   search(myAnts, food, xroutes);
   xroutes.sort(routeCmp);
   doMoveRoutes(xroutes, antsUsed, enemyHills);
   doMoveRoutes(xroutes, antsUsed, food);
-  //  doMoveRoutes(xroutes, antsUsed, unseen);
 
   goLefty(antsUsed);
   state.bug << "time taken: " << state.timer.getTime() << endl << endl;
 }
 
+// General left favoring wall exploring algorithm.
 void Bot::goLefty(set<Location> &antsUsed) {
   set<Location> destinations;
   map<Location,int> newStraight;
@@ -436,4 +392,3 @@ void Bot::goLefty(set<Location> &antsUsed) {
   straight = newStraight;
   lefty = newLefty;
 }
-

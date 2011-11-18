@@ -29,6 +29,7 @@ class State {
     turn, turns,
     noPlayers;
   double attackradius, spawnradius, viewradius;
+  short int attackradius2, spawnradius2, viewradius2;
   double loadtime, turntime;
   std::vector<double> scores;
   bool gameover;
@@ -49,6 +50,7 @@ class State {
   void makeMove(const Location &loc, int direction);
 
   double distance(const Location &loc1, const Location &loc2);
+  int distance2(const Location &loc1, const Location &loc2);
   int manhattan(const Location &a, const Location &b);
   Location getLocation(const Location &startLoc, int direction);
   std::vector<int> getDirections(const Location &a, const Location &b);

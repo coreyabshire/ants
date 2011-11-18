@@ -19,3 +19,8 @@ bool operator==(const Route &a, const Route &b) {
       && a.start == b.start
       && a.end == b.end;
 }
+
+ostream& operator<<(ostream& os, const Route &r) {
+  os << r.start << " " << r.end << " " << r.steps.size();
+}
+    

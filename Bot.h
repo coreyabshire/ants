@@ -32,10 +32,12 @@ class Bot {
 
   map<Location,int> straight;
   map<Location,int> lefty;
+  map<Location,Route> routes;
 
   void goLefty(set<Location> &antsUsed);  //makes moves for a single turn
   bool doMoveDirection(const Location &ant, int d);
   bool doMoveLocation(const Location &antLoc, const Location &destLoc);
+  bool doMoveRoute(Route &route, set<Location> &antsUsed);
   bool doMoveRoutes(list< Route >& routes, set<Location> &antsUsed,
                     set<Location> targets);
   vector<Location> shortestPath(const Location &a, const Location &b);
@@ -45,8 +47,8 @@ class Bot {
   bool search(Location &start, set<Location> &ends, Route &route);
   void search(set<Location> &sources, set<Location> &targets, list< Route > &routes);
   void search(set<Location> &sources, list< Route > &routes);
-  void search(set<Location> &sources, set<Location> &targets, list< Route > &routes, int maxCount);
-
+  int search(set<Location> &sources, const Location &target, list< Route > &routes, int maxCount);
+  bool search(Location &start, Location &goal, Route &route);
 };
 
 #endif //BOT_H_
