@@ -3,8 +3,8 @@
 #include "bot.h"
 
 TEST(Bot, DoMoveDirection) {
-  Bot bot(10,10);
-  Location a(5,5), n(4,5), s(6,5), e(5,4), w(5,6);
+  Bot bot(10, 10);
+  Location a(5, 5), n(4, 5), s(6, 5), e(5, 4), w(5, 6);
   bot.state[a].ant = 0;
   bot.state.myAnts.push_back(a);
   EXPECT_TRUE(bot.doMoveDirection(a, NORTH));
@@ -14,7 +14,7 @@ TEST(Bot, DoMoveDirection) {
 }
 
 TEST(Route, Assignment) {
-  Location a(1,1), b(2,2), o(0,0);
+  Location a(1, 1), b(2, 2), o(0,0);
   map<Location,Location> p;
   p[b] = a;
   Route r1(a, b, p), r2, r3(r1);
@@ -35,7 +35,7 @@ TEST(Route, Assignment) {
 
 TEST(Bot, Search4) {
   Bot bot(10, 10);
-  Location start(1,1), goal(5,5);
+  Location start(1, 1), goal(5, 5);
   Route route;
   EXPECT_TRUE(bot.search(start, goal, route));
   EXPECT_EQ(start, route.start);
@@ -44,19 +44,19 @@ TEST(Bot, Search4) {
 }
 
 TEST(State, Sizes) {
-  State state(200,200);
-  Location a(0,0);
+  State state(200, 200);
+  Location a(0, 0);
   EXPECT_EQ(2, sizeof a);
   EXPECT_EQ(48, sizeof state.grid[0][0]);
   EXPECT_EQ(200, state.grid.size());
   EXPECT_EQ(40000, state.grid.size() * state.grid[0].size());
   EXPECT_EQ(1920000, state.rows * state.cols * sizeof state.grid[0][0]);
-  EXPECT_EQ(800, sizeof state);
+  EXPECT_EQ(808, sizeof state);
 }
 
 TEST(State, Distance) {
-  State state(200,200);
-  Location a(0,0), b(1,1), c(5,5), d(10,10), e(198,198);
+  State state(200, 200);
+  Location a(0, 0), b(1, 1), c(5, 5), d(10, 10), e(198, 198);
   EXPECT_FLOAT_EQ(0, state.distance(a, a));
   EXPECT_FLOAT_EQ(1.4142135, state.distance(a, b));
   EXPECT_FLOAT_EQ(7.0710678, state.distance(a, c));
@@ -69,8 +69,8 @@ TEST(State, Distance) {
 }
 
 TEST(State, Distance2) {
-  State state(200,200);
-  Location a(0,0), b(1,1), c(5,5), d(10,10), e(198,198);
+  State state(200, 200);
+  Location a(0, 0), b(1, 1), c(5, 5), d(10, 10), e(198, 198);
   EXPECT_EQ(0, state.distance2(a, a));
   EXPECT_EQ(2, state.distance2(a, b));
   EXPECT_EQ(50, state.distance2(a, c));
@@ -100,6 +100,7 @@ TEST(State, NumAttackAnts) {
   EXPECT_EQ(2, bot.numAttackAnts(10));
   EXPECT_EQ(5, bot.numAttackAnts(20));
   EXPECT_EQ(7, bot.numAttackAnts(200));
+  EXPECT_EQ(7, bot.numAttackAnts(400));
 }
 
 int main(int argc, char **argv) {

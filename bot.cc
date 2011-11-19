@@ -300,15 +300,24 @@ void Bot::makeMoves() {
   int pauseradius2 = (int) pow((state.attackradius + 1.0), 2);
   set<Location> antsUsed;
   xroutes.clear();
-  int attackAnts = numAttackAnts(myAnts.size());
   for (set<Location>::iterator p = enemyHills.begin(); p != enemyHills.end(); p++)
-    search(myAnts, *p, xroutes, attackAnts);
+    search(myAnts, *p, xroutes, numAttackAnts(myAnts.size()));
   search(myAnts, food, xroutes);
   xroutes.sort(routeCmp);
   doMoveRoutes(xroutes, antsUsed, enemyHills);
   doMoveRoutes(xroutes, antsUsed, food);
 
   goLefty(antsUsed);
+  state.bug << "unknown "
+            << state.turn << " "
+            << state.myAnts.size() << " "
+            << state.nVisible << " "
+            << state.nSeen << " "
+            << state.nUnknown << " "
+            << state.nSquares << " "
+            << ((double)state.nVisible / (double)state.nSquares) << " "
+            << ((double)state.nSeen / (double)state.nSquares) << " " 
+            << ((double)state.nUnknown / (double)state.nSquares) << endl;
   state.bug << "time taken: " << state.timer.getTime() << endl << endl;
 }
 
@@ -321,14 +330,16 @@ void Bot::goLefty(set<Location> &antsUsed) {
     if (antsUsed.count(*p))
       continue;
     if (!straight.count(*p) && !lefty.count(*p))
-      straight[*p] = ((*p).row % 2 == 0) ?
-          (((*p).col % 2 == 0) ? NORTH : SOUTH) :
-          (((*p).col % 2 == 0) ? EAST : WEST);
+      //straight[*p] = ((*p).row % 2 == 0) ?
+      //   (((*p).col % 2 == 0) ? NORTH : SOUTH) :
+      //   (((*p).col % 2 == 0) ? EAST : WEST);
+      straight[*p] = rand() % 4;
     if (straight.count(*p)) {
       int d = straight[*p];
       Location dest = state.getLocation(*p, d);
-      if (!state.grid[dest.row][dest.col].isWater) {
-        if (state.grid[dest.row][dest.col].ant == -1 && !destinations.count(dest)) {
+      Square &square = state[dest];
+      if (!square.isWater && !square.hillPlayer == 0) {
+        if (square.ant == -1 && !destinations.count(dest)) {
           state.makeMove(*p, d);
           newStraight[dest] = d;
           destinations.insert(dest);

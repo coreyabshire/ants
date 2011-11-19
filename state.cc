@@ -10,19 +10,21 @@ State::~State() {
   bug.close();
 }
 
-State::State(int rows, int cols)
-    : gameover(0), turn(0), rows(rows), cols(cols),
-      grid(rows, vector<Square>(cols, Square())) {
+State::State(int rows, int cols) : gameover(0), turn(0), rows(rows), cols(cols) {
   bug.open("./debug.txt");
+  setup();
 }    
 
 // sets the state up
 void State::setup() {
+  nSquares = nUnknown = rows * cols;
+  nSeen = nVisible = 0;
   grid = vector<vector<Square> >(rows, vector<Square>(cols, Square()));
 }
 
 // resets all non-water squares to land and clears the bots ant vector
 void State::reset() {
+  nVisible = 0;
   myAnts.clear();
   enemyAnts.clear();
   myHills.clear();
@@ -30,8 +32,7 @@ void State::reset() {
   food.clear();
   for(int row=0; row<rows; row++)
     for(int col=0; col<cols; col++)
-      if(!grid[row][col].isWater)
-        grid[row][col].reset();
+      grid[row][col].reset();
 }
 
 // outputs move information to the engine
@@ -100,35 +101,43 @@ vector<int> State::getDirections(const Location &a, const Location &b) {
   return directions;
 }
 
+void State::markVisible(const Location& a) {
+  if (!squareAt(a).isSeen) {
+    --nUnknown;
+    ++nSeen;
+  }
+  if (!squareAt(a).isVisible) {
+    ++nVisible;
+  }
+  squareAt(a).markVisible(turn);
+}
+
 // This function will update the lastSeen value for any squares currently
 // visible by one of your live ants.
 void State::updateVisionInformation() {
   queue<Location> Q;
   Location sLoc, cLoc, nLoc;
 
-  for(int a=0; a<(int) myAnts.size(); a++) {
+  for (int a = 0; a < (int) myAnts.size(); a++) {
     sLoc = myAnts[a];
     Q.push(sLoc);
 
-    vector< vector<bool> > visited(rows, vector<bool>(cols, 0));
-    grid[sLoc.row][sLoc.col].isVisible = 1;
-    visited[sLoc.row][sLoc.col] = 1;
+    set<Location> visited;
+    markVisible(sLoc);
+    visited.insert(sLoc);
 
-    while(!Q.empty()) {
+    while (!Q.empty()) {
       cLoc = Q.front();
       Q.pop();
 
-      for(int d=0; d<TDIRECTIONS; d++) {
+      for (int d = 0; d < TDIRECTIONS; d++) {
         nLoc = getLocation(cLoc, d);
 
-        if(!visited[nLoc.row][nLoc.col] && distance(sLoc, nLoc) <= viewradius) {
-          Square &square = grid[nLoc.row][nLoc.col];
-          square.isVisible = 1;
-          square.isSeen = 1;
-          square.lastSeen = turn;
+        if (!visited.count(nLoc) && distance(sLoc, nLoc) <= viewradius) {
+          markVisible(nLoc);
           Q.push(nLoc);
         }
-        visited[nLoc.row][nLoc.col] = 1;
+        visited.insert(nLoc);
       }
     }
   }
@@ -225,8 +234,7 @@ istream& operator>>(istream &is, State &state) {
         state.grid[row][col].isFood = 1;
         state.food.push_back(Location(row, col));
       }
-      else if(inputType == "a") //live ant square
-      {
+      else if(inputType == "a") { //live ant square
         is >> row >> col >> player;
         state.grid[row][col].ant = player;
         if(player == 0)
@@ -247,8 +255,9 @@ istream& operator>>(istream &is, State &state) {
         else
           state.enemyHills.push_back(Location(row, col));
       }
-      else if(inputType == "players") //player information
+      else if(inputType == "players") { //player information
         is >> state.noPlayers;
+      }
       else if(inputType == "scores") { //score information
         state.scores = vector<double>(state.noPlayers, 0.0);
         for(int p=0; p<state.noPlayers; p++)
@@ -261,8 +270,9 @@ istream& operator>>(istream &is, State &state) {
           state.timer.start();
         break;
       }
-      else //unknown line
+      else { //unknown line
         getline(is, junk);
+      }
     }
   }
 
@@ -299,7 +309,7 @@ bool operator==(const Route &a, const Route &b) {
 ostream& operator<<(ostream& os, const Route &r) {
   os << r.start << " " << r.end << " " << r.steps.size();
 }
-    
+
 std::ostream& operator<<(std::ostream& os, const Square &square) {
   if (square.isVisible)
     os << "V";
@@ -328,6 +338,5 @@ bool operator!=(const Location &a, const Location &b) {
 }
 
 std::ostream& operator<<(std::ostream &os, const Location &loc) {
-  return os << "(" << loc.row << "," << loc.col << ")";
+  return os << "(" << (int)loc.row << "," << (int)loc.col << ")";
 }
-

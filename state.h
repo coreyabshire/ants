@@ -9,6 +9,7 @@
 #include <vector>
 #include <queue>
 #include <stack>
+#include <set>
 #include <stdint.h>
 #include <vector>
 #include <deque>
@@ -44,6 +45,11 @@ class Square {
     ant = hillPlayer = -1;
     deadAnts.clear();
   };
+
+  void markVisible(int turn) {
+    isVisible = isSeen = 1;
+    lastSeen = turn;
+  };
 };
 
 std::ostream& operator<<(std::ostream& os, const Square &square);
@@ -66,6 +72,7 @@ std::ostream& operator<<(std::ostream &os, const Location &loc);
 class State {
  public:
   int rows, cols, turn, turns, noPlayers;
+  unsigned short int nSquares, nUnknown, nSeen, nVisible;
   double attackradius, spawnradius, viewradius;
   short int attackradius2, spawnradius2, viewradius2;
   double loadtime, turntime;
@@ -93,10 +100,12 @@ class State {
   int manhattan(const Location &a, const Location &b);
   Location getLocation(const Location &startLoc, int direction);
   vector<int> getDirections(const Location &a, const Location &b);
+  void markVisible(const Location& a);
 
   void updateVisionInformation();
 
-  Square& operator[](Location a) { return grid[a.row][a.col]; }
+  Square& squareAt(Location a) { return grid[a.row][a.col]; }
+  Square& operator[](Location a) { return squareAt(a); }
 };
 
 ostream& operator<<(ostream &os, const State &state);
