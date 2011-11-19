@@ -48,11 +48,11 @@ void State::makeMove(const Location &loc, int d) {
 }
 
 // returns the euclidean distance between two locations with the edges wrapped
-double State::distance(const Location &loc1, const Location &loc2) {
-  int d1 = abs(loc1.row-loc2.row),
-      d2 = abs(loc1.col-loc2.col),
-      dr = min(d1, rows-d1),
-      dc = min(d2, cols-d2);
+double State::distance(const Location &a, const Location &b) {
+  int d1 = abs(a.row - b.row),
+      d2 = abs(a.col - b.col),
+      dr = min(d1, rows - d1),
+      dc = min(d2, cols - d2);
   return sqrt(dr*dr + dc*dc);
 }
 

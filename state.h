@@ -57,7 +57,7 @@ std::ostream& operator<<(std::ostream& os, const Square &square);
 // A grid location.
 class Location {
  public:
-  short int row, col;
+  int row, col;
   Location() : row(0), col(0) {};
   Location(const Location& loc) : row(loc.row), col(loc.col) {};
   Location(short int r, short int c) : row(r), col(c) {};

@@ -54,11 +54,9 @@ bool Bot::doMoveDirection(const Location &a, int d) {
 
 bool Bot::doMoveLocation(const Location &a, const Location &b) {
   vector<int> ds = state.getDirections(a, b);
-  for (vector<int>::iterator dp = ds.begin(); dp != ds.end(); dp++) {
-    if (doMoveDirection(a, *dp)) {
+  for (vector<int>::iterator dp = ds.begin(); dp != ds.end(); dp++)
+    if (doMoveDirection(a, *dp))
       return true;
-    }
-  }
   return false;
 }
 
@@ -276,7 +274,7 @@ void Bot::makeMoves() {
 
   // keep ants from moving onto our own hills and preventing spawning
   insertAll(orders, state.myHills);
-    
+
   state.bug << "turn " << state.turn << ":" << endl;
   state.bug << state << endl;
   state.bug << "unseen " << unseen.size() << endl;

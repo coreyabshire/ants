@@ -10,10 +10,15 @@ TESTSOURCES=unittest.cc bot.cc state.cc
 TESTOBJECTS=$(addsuffix .o, $(basename ${TESTSOURCES}))
 TESTEXECUTABLE=UnitTest
 
+VIZLDFLAGS=-O2 -lm -lGL -lGLU -lglut
+VIZSOURCES=visualizer.cc bot.cc state.cc
+VIZOBJECTS=$(addsuffix .o, $(basename ${VIZSOURCES}))
+VIZEXECUTABLE=Visualizer
+
 #Uncomment the following to enable debugging
 CFLAGS+=-g -DDEBUG
 
-all: $(OBJECTS) $(EXECUTABLE) test
+all: $(OBJECTS) $(EXECUTABLE) $(VIZEXECUTABLE) test
 
 test: $(TESTOBJECTS) $(TESTEXECUTABLE)
 	./UnitTest
@@ -27,6 +32,9 @@ $(EXECUTABLE): $(OBJECTS)
 
 $(TESTEXECUTABLE): $(TESTOBJECTS)
 	$(CC) $(TESTOBJECTS) -o $@ $(TESTLDFLAGS) 
+
+$(VIZEXECUTABLE): $(VIZOBJECTS)
+	$(CC) $(VIZOBJECTS) -o $@ $(VIZLDFLAGS) 
 
 .cc.o: *.h
 	$(CC) $(CFLAGS) $< -o $@

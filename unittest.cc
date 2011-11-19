@@ -46,7 +46,7 @@ TEST(Bot, Search4) {
 TEST(State, Sizes) {
   State state(200, 200);
   Location a(0, 0);
-  EXPECT_EQ(4, sizeof a);
+  EXPECT_EQ(8, sizeof a);
   EXPECT_EQ(48, sizeof state.grid[0][0]);
   EXPECT_EQ(200, state.grid.size());
   EXPECT_EQ(40000, state.grid.size() * state.grid[0].size());
@@ -67,6 +67,11 @@ TEST(State, Distance) {
   EXPECT_FLOAT_EQ(5.6568542, state.distance(b, c));
   EXPECT_FLOAT_EQ(4.2426405, state.distance(b, e));
   EXPECT_FLOAT_EQ(7.0710678, state.distance(c, d));
+  EXPECT_FLOAT_EQ(0, state.distance(u, u));
+  EXPECT_FLOAT_EQ(1.4142135, state.distance(a, u));
+  EXPECT_FLOAT_EQ(1.4142135, state.distance(u, a));
+  EXPECT_FLOAT_EQ(7.0710678, state.distance(a, v));
+  EXPECT_FLOAT_EQ(5.6568542, state.distance(u, v));
 }
 
 TEST(State, Distance2) {
@@ -106,8 +111,8 @@ TEST(State, NumAttackAnts) {
   EXPECT_EQ(1, bot.numAttackAnts(5));
   EXPECT_EQ(2, bot.numAttackAnts(10));
   EXPECT_EQ(5, bot.numAttackAnts(20));
-  EXPECT_EQ(20, bot.numAttackAnts(200));
-  EXPECT_EQ(20, bot.numAttackAnts(400));
+  EXPECT_EQ(7, bot.numAttackAnts(200));
+  EXPECT_EQ(7, bot.numAttackAnts(400));
 }
 
 int main(int argc, char **argv) {
