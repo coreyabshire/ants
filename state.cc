@@ -36,7 +36,7 @@ void State::reset() {
 
 // outputs move information to the engine
 void State::makeMove(const Location &loc, int d) {
-  cout << "o " << loc.row << " " << loc.col << " " << CDIRECTIONS[d] << endl;
+  cout << "o " << (int) loc.row << " " << (int) loc.col << " " << CDIRECTIONS[d] << endl;
 
   Location nLoc = getLocation(loc, d);
   grid[nLoc.row][nLoc.col].ant = grid[loc.row][loc.col].ant;

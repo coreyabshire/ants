@@ -78,6 +78,8 @@ class Bot {
   void search(set<Location> &sources, list< Route > &routes);
   int search(set<Location> &sources, const Location &target, list< Route > &routes, int maxCount);
   bool search(Location &start, Location &goal, Route &route);
+  int numAttackAnts(int totalAnts);
 };
+
 
 #endif //BOT_H_

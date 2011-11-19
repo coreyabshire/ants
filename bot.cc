@@ -267,6 +267,10 @@ bool Bot::search(Location &start, Location &goal, Route &route) {
   return false;
 }
 
+int Bot::numAttackAnts(int totalAnts) {
+  return min((double)totalAnts / 4.0, 7.0);
+}
+
 // Makes the ants moves for the turn.
 void Bot::makeMoves() {
   orders.clear();
@@ -296,16 +300,9 @@ void Bot::makeMoves() {
   int pauseradius2 = (int) pow((state.attackradius + 1.0), 2);
   set<Location> antsUsed;
   xroutes.clear();
+  int attackAnts = numAttackAnts(myAnts.size());
   for (set<Location>::iterator p = enemyHills.begin(); p != enemyHills.end(); p++)
-    search(myAnts, *p, xroutes, 20);
-  // for (vector<Manhattan>::iterator p = ranges.begin(); p != ranges.end(); p++)
-  //   if ((*p).d < state.viewradius2) {
-  //     Route route;
-  //     if (search((*p).a, (*p).b, route)) {
-  //       doMoveRoute(route, antsUsed);
-  //       state.bug << "found route " << route << endl;
-  //     }
-  //   }
+    search(myAnts, *p, xroutes, attackAnts);
   search(myAnts, food, xroutes);
   xroutes.sort(routeCmp);
   doMoveRoutes(xroutes, antsUsed, enemyHills);

@@ -2,16 +2,6 @@
 #include "state.h"
 #include "bot.h"
 
-TEST(State, Manhattan) {
-  State state(10, 10);
-  Location a(1, 1), b(3, 3), c(9, 8);
-  EXPECT_EQ(0, state.manhattan(a, a));
-  EXPECT_EQ(4, state.manhattan(a, b));
-  EXPECT_EQ(4, state.manhattan(b, a));
-  EXPECT_EQ(5, state.manhattan(a, c));
-  EXPECT_EQ(5, state.manhattan(c, a));
-}
-
 TEST(Bot, DoMoveDirection) {
   Bot bot(10,10);
   Location a(5,5), n(4,5), s(6,5), e(5,4), w(5,6);
@@ -56,7 +46,7 @@ TEST(Bot, Search4) {
 TEST(State, Sizes) {
   State state(200,200);
   Location a(0,0);
-  EXPECT_EQ(4, sizeof a);
+  EXPECT_EQ(2, sizeof a);
   EXPECT_EQ(48, sizeof state.grid[0][0]);
   EXPECT_EQ(200, state.grid.size());
   EXPECT_EQ(40000, state.grid.size() * state.grid[0].size());
@@ -76,6 +66,40 @@ TEST(State, Distance) {
   EXPECT_FLOAT_EQ(5.6568542, state.distance(b, c));
   EXPECT_FLOAT_EQ(4.2426405, state.distance(b, e));
   EXPECT_FLOAT_EQ(7.0710678, state.distance(c, d));
+}
+
+TEST(State, Distance2) {
+  State state(200,200);
+  Location a(0,0), b(1,1), c(5,5), d(10,10), e(198,198);
+  EXPECT_EQ(0, state.distance2(a, a));
+  EXPECT_EQ(2, state.distance2(a, b));
+  EXPECT_EQ(50, state.distance2(a, c));
+  EXPECT_EQ(50, state.distance2(c, a));
+  EXPECT_EQ(200, state.distance2(a, d));
+  EXPECT_EQ(8, state.distance2(a, e));
+  EXPECT_EQ(32, state.distance2(b, c));
+  EXPECT_EQ(18, state.distance2(b, e));
+  EXPECT_EQ(50, state.distance2(c, d));
+}
+
+TEST(State, Manhattan) {
+  State state(10, 10);
+  Location a(1, 1), b(3, 3), c(9, 8);
+  EXPECT_EQ(0, state.manhattan(a, a));
+  EXPECT_EQ(4, state.manhattan(a, b));
+  EXPECT_EQ(4, state.manhattan(b, a));
+  EXPECT_EQ(5, state.manhattan(a, c));
+  EXPECT_EQ(5, state.manhattan(c, a));
+}
+
+TEST(State, NumAttackAnts) {
+  Bot bot(20, 20);
+  EXPECT_EQ(0, bot.numAttackAnts(0));
+  EXPECT_EQ(0, bot.numAttackAnts(1));
+  EXPECT_EQ(1, bot.numAttackAnts(5));
+  EXPECT_EQ(2, bot.numAttackAnts(10));
+  EXPECT_EQ(5, bot.numAttackAnts(20));
+  EXPECT_EQ(7, bot.numAttackAnts(200));
 }
 
 int main(int argc, char **argv) {
