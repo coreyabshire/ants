@@ -51,7 +51,7 @@ TEST(State, Sizes) {
   EXPECT_EQ(200, state.grid.size());
   EXPECT_EQ(40000, state.grid.size() * state.grid[0].size());
   EXPECT_EQ(1920000, state.rows * state.cols * sizeof state.grid[0][0]);
-  EXPECT_EQ(880, sizeof state);
+  EXPECT_EQ(904, sizeof state);
 }
 
 TEST(State, Distance) {
@@ -106,8 +106,8 @@ TEST(State, NumAttackAnts) {
   EXPECT_EQ(1, bot.numAttackAnts(5));
   EXPECT_EQ(2, bot.numAttackAnts(10));
   EXPECT_EQ(5, bot.numAttackAnts(20));
-  EXPECT_EQ(7, bot.numAttackAnts(200));
-  EXPECT_EQ(7, bot.numAttackAnts(400));
+  EXPECT_EQ(20, bot.numAttackAnts(200));
+  EXPECT_EQ(20, bot.numAttackAnts(400));
 }
 
 int main(int argc, char **argv) {

@@ -77,8 +77,7 @@ bool Bot::doMoveRoute(Route &r, set<Location> &antsUsed) {
   }
 }
 
-bool Bot::doMoveRoutes(list< Route >& routes, set<Location> &antsUsed,
-                       set<Location> targets) {
+bool Bot::doMoveRoutes(list<Route>& routes, set<Location> &antsUsed, set<Location> targets) {
   for (list< Route >::iterator r = routes.begin(); r != routes.end(); r++) {
     if (targets.count((*r).steps.back())) {
       if ((*r).steps.size() > 1) {
@@ -318,7 +317,10 @@ void Bot::makeMoves() {
             << ((double)state.nVisible / (double)state.nSquares) << " "
             << ((double)state.nSeen / (double)state.nSquares) << " " 
             << ((double)state.nUnknown / (double)state.nSquares) << endl;
-  state.bug << "time taken: " << state.timer.getTime() << endl << endl;
+  state.bug << "time taken: "
+            << state.turn << " " 
+            << state.myAnts.size() << " " 
+            << state.timer.getTime() << endl << endl;
 }
 
 // General left favoring wall exploring algorithm.

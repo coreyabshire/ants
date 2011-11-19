@@ -75,32 +75,22 @@ int State::manhattan(const Location &a, const Location &b) {
 
 void State::calcOffsets(int radius2, vector<Location> &offsets) {
   queue<Location> Q;
-  Location sLoc(0,0), cLoc, nLoc;
-
-  Q.push(sLoc);
-
+  Location a(0,0);
+  Q.push(a);
   set<Location> visited;
-  visited.insert(sLoc);
-
+  visited.insert(a);
   while (!Q.empty()) {
-    cLoc = Q.front();
+    Location u = Q.front();
     Q.pop();
-    
     for (int d = 0; d < TDIRECTIONS; d++) {
-      nLoc = getLocationNoWrap(cLoc, d);
-      
-      if (!visited.count(nLoc) && distance2(sLoc, nLoc) <= radius2) {
-        offsets.push_back(nLoc);
-        Q.push(nLoc);
+      Location v = getLocationNoWrap(u, d);
+      if (!visited.count(v) && distance2(a, v) <= radius2) {
+        offsets.push_back(v);
+        Q.push(v);
       }
-      visited.insert(nLoc);
+      visited.insert(v);
     }
   }
-  bug << "offsets for " << radius2 << " are ";
-  for (vector<Location>::iterator p = offsets.begin(); p != offsets.end(); p++) {
-    bug << *p << " ";
-  }
-  bug << endl;
 }
 
 // returns the new location from moving in a given direction with the edges wrapped
@@ -113,6 +103,11 @@ Location State::getLocationNoWrap(const Location &loc, int direction) {
 Location State::getLocation(const Location &loc, int direction) {
   return Location( (loc.row + DIRECTIONS[direction][0] + rows) % rows,
                    (loc.col + DIRECTIONS[direction][1] + cols) % cols );
+}
+
+Location State::getLocation(const Location &loc, const Location &off) {
+  return Location( (loc.row + off.row + rows) % rows,
+                   (loc.col + off.col + cols) % cols );
 }
 
 vector<int> State::getDirections(const Location &a, const Location &b) {
@@ -154,31 +149,10 @@ void State::markVisible(const Location& a) {
 // This function will update the lastSeen value for any squares currently
 // visible by one of your live ants.
 void State::updateVisionInformation() {
-  queue<Location> Q;
-  Location sLoc, cLoc, nLoc;
-
-  for (int a = 0; a < (int) myAnts.size(); a++) {
-    sLoc = myAnts[a];
-    Q.push(sLoc);
-
-    set<Location> visited;
-    markVisible(sLoc);
-    visited.insert(sLoc);
-
-    while (!Q.empty()) {
-      cLoc = Q.front();
-      Q.pop();
-
-      for (int d = 0; d < TDIRECTIONS; d++) {
-        nLoc = getLocation(cLoc, d);
-
-        if (!visited.count(nLoc) && distance(sLoc, nLoc) <= viewradius) {
-          markVisible(nLoc);
-          Q.push(nLoc);
-        }
-        visited.insert(nLoc);
-      }
-    }
+  for (vector<Location>::iterator p = myAnts.begin(); p != myAnts.end(); p++) {
+    markVisible(*p);
+    for (vector<Location>::iterator o = viewOffsets.begin(); o != viewOffsets.end(); o++)
+      markVisible(getLocation(*p, *o));
   }
 }
 
