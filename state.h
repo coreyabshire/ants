@@ -13,6 +13,7 @@
 #include <vector>
 #include <deque>
 #include <map>
+#include <algorithm>
 
 #include "Timer.h"
 #include "Bug.h"
@@ -53,7 +54,7 @@ class Location {
   short int row, col;
   Location() : row(0), col(0) {};
   Location(const Location& loc) : row(loc.row), col(loc.col) {};
-  Location(int r, int c) : row(r), col(c) {};
+  Location(short int r, short int c) : row(r), col(c) {};
 };
 
 bool operator<(const Location &a, const Location &b);
@@ -79,6 +80,7 @@ class State {
   Bug bug;
 
   State();
+  State(int rows, int cols);
   ~State();
 
   void setup();
@@ -93,6 +95,8 @@ class State {
   vector<int> getDirections(const Location &a, const Location &b);
 
   void updateVisionInformation();
+
+  Square& operator[](Location a) { return grid[a.row][a.col]; }
 };
 
 ostream& operator<<(ostream &os, const State &state);
@@ -102,12 +106,20 @@ istream& operator>>(istream &is, State &state);
 class Route {
  public:
   deque<Location> steps;
-  Location start;
-  Location end;
+  Location start, end;
   int distance;
 
-  Route() {};
+  Route() : start(Location(0,0)), end(Location(0,0)), distance(0), steps(deque<Location>()) {};
   Route(const Location& start, const Location& end, map<Location,Location> &p);
+  Route(const Route &r) {
+    steps = r.steps;
+    start = r.start;
+    end = r.end;
+    distance = r.distance;
+  };
+  
+  void flip();
+
 };
 
 bool operator<(const Route &a, const Route &b);

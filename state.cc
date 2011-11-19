@@ -1,11 +1,7 @@
-#include "State.h"
-
-using namespace std;
+#include "state.h"
 
 // constructor
-State::State() {
-  gameover = 0;
-  turn = 0;
+State::State() : gameover(0), turn(0) {
   bug.open("./debug.txt");
 }
 
@@ -13,6 +9,12 @@ State::State() {
 State::~State() {
   bug.close();
 }
+
+State::State(int rows, int cols)
+    : gameover(0), turn(0), rows(rows), cols(cols),
+      grid(rows, vector<Square>(cols, Square())) {
+  bug.open("./debug.txt");
+}    
 
 // sets the state up
 void State::setup() {
@@ -33,10 +35,10 @@ void State::reset() {
 }
 
 // outputs move information to the engine
-void State::makeMove(const Location &loc, int direction) {
-  cout << "o " << loc.row << " " << loc.col << " " << CDIRECTIONS[direction] << endl;
+void State::makeMove(const Location &loc, int d) {
+  cout << "o " << loc.row << " " << loc.col << " " << CDIRECTIONS[d] << endl;
 
-  Location nLoc = getLocation(loc, direction);
+  Location nLoc = getLocation(loc, d);
   grid[nLoc.row][nLoc.col].ant = grid[loc.row][loc.col].ant;
   grid[loc.row][loc.col].ant = -1;
 }
@@ -98,23 +100,23 @@ vector<int> State::getDirections(const Location &a, const Location &b) {
   return directions;
 }
 
-// This function will update update the lastSeen value for any squares currently
+// This function will update the lastSeen value for any squares currently
 // visible by one of your live ants.
 void State::updateVisionInformation() {
-  std::queue<Location> locQueue;
+  queue<Location> Q;
   Location sLoc, cLoc, nLoc;
 
   for(int a=0; a<(int) myAnts.size(); a++) {
     sLoc = myAnts[a];
-    locQueue.push(sLoc);
+    Q.push(sLoc);
 
-    std::vector<std::vector<bool> > visited(rows, std::vector<bool>(cols, 0));
+    vector< vector<bool> > visited(rows, vector<bool>(cols, 0));
     grid[sLoc.row][sLoc.col].isVisible = 1;
     visited[sLoc.row][sLoc.col] = 1;
 
-    while(!locQueue.empty()) {
-      cLoc = locQueue.front();
-      locQueue.pop();
+    while(!Q.empty()) {
+      cLoc = Q.front();
+      Q.pop();
 
       for(int d=0; d<TDIRECTIONS; d++) {
         nLoc = getLocation(cLoc, d);
@@ -124,7 +126,7 @@ void State::updateVisionInformation() {
           square.isVisible = 1;
           square.isSeen = 1;
           square.lastSeen = turn;
-          locQueue.push(nLoc);
+          Q.push(nLoc);
         }
         visited[nLoc.row][nLoc.col] = 1;
       }
@@ -166,11 +168,14 @@ istream& operator>>(istream &is, State &state) {
     if(inputType == "end") {
       state.gameover = 1;
       break;
-    } else if(inputType == "turn") {
+    }
+    else if(inputType == "turn") {
       is >> state.turn;
       break;
-    } else //unknown line
+    }
+    else { //unknown line
       getline(is, junk);
+    }
   }
 
   if(state.turn == 0) {
@@ -265,7 +270,7 @@ istream& operator>>(istream &is, State &state) {
 }
 
 Route::Route(const Location& start, const Location& end, map<Location,Location> &p)
-{
+    : start(start), end(end), distance(0) {
   for (Location c = end; c != start; c = p[c]) {
     steps.push_front(c);
     distance++;
@@ -273,6 +278,13 @@ Route::Route(const Location& start, const Location& end, map<Location,Location> 
   steps.push_front(start);
   distance++;
 };
+
+void Route::flip() {
+  Location temp = start;
+  start = end;
+  end = temp;
+  reverse(steps.begin(), steps.end());
+}
 
 bool operator<(const Route &a, const Route &b) {
   return a.distance < b.distance;
@@ -288,8 +300,7 @@ ostream& operator<<(ostream& os, const Route &r) {
   os << r.start << " " << r.end << " " << r.steps.size();
 }
     
-std::ostream& operator<<(std::ostream& os, const Square &square)
-{
+std::ostream& operator<<(std::ostream& os, const Square &square) {
   if (square.isVisible)
     os << "V";
   if (square.isWater)
@@ -305,12 +316,7 @@ std::ostream& operator<<(std::ostream& os, const Square &square)
 }
 
 bool operator<(const Location &a, const Location &b) {
-  if (a.row < b.row)
-    return true;
-  else if (a.row > b.row) 
-    return false;
-  else
-    return a.col < b.col;
+  return a.col == b.col ? a.row < b.row : a.col < b.col;
 }
 
 bool operator==(const Location &a, const Location &b) {
@@ -322,7 +328,6 @@ bool operator!=(const Location &a, const Location &b) {
 }
 
 std::ostream& operator<<(std::ostream &os, const Location &loc) {
-  os << "(" << loc.row << "," << loc.col << ")";
-  return os;
+  return os << "(" << loc.row << "," << loc.col << ")";
 }
 

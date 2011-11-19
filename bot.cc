@@ -1,4 +1,4 @@
-#include "Bot.h"
+#include "bot.h"
 
 int dleft[] = { WEST, NORTH, EAST, SOUTH };
 int dright[] = { EAST, SOUTH, WEST, NORTH };
@@ -6,6 +6,7 @@ int dbehind[] = { SOUTH, WEST, NORTH, EAST };
 
 // constructor
 Bot::Bot() : nextAntId(0) {};
+Bot::Bot(int rows, int cols) : nextAntId(0), state(rows, cols) {};
 
 // plays a single game of Ants.
 void Bot::playGame() {
@@ -38,13 +39,12 @@ void Bot::endTurn() {
   cout << "go" << endl;
 }
 
-bool Bot::doMoveDirection(const Location &antLoc, int d) {
-  Location newLoc = state.getLocation(antLoc, d);
-  Square& square = state.grid[newLoc.row][newLoc.col];
-  if (!square.isWater && !orders.count(newLoc)) {
-    orders.insert(newLoc);
-    state.makeMove(antLoc, d);
-    straight[antLoc] = d;
+bool Bot::doMoveDirection(const Location &a, int d) {
+  Location b = state.getLocation(a, d);
+  if (!state[b].isWater && !orders.count(b)) {
+    orders.insert(b);
+    state.makeMove(a, d);
+    straight[a] = d;
     return true;
   }
   else {
@@ -117,7 +117,7 @@ void Bot::updateMemory(set<Location> &memory, vector<Location> &seen,
   removeIf(memory, pred);
 }
 
-void Bot::search(set<Location> &sources, set<Location> &targets, list< Route > &routes) {
+void Bot::search(set<Location> &sources, set<Location> &targets, list<Route> &routes) {
   set<Location> unassignedAnts(sources.begin(), sources.end());
   set<Location> remainingTargets(targets.begin(), targets.end());
   set<Location> expanded;
@@ -160,47 +160,42 @@ void Bot::search(set<Location> &sources, set<Location> &targets, list< Route > &
 }
 
 
-int Bot::search(set<Location> &sources, const Location &target, list< Route > &routes, int maxCount) {
-  set<Location> unassignedAnts(sources.begin(), sources.end());
+int Bot::search(set<Location> &sources, const Location &target, list<Route> &routes, int maxCount) {
   int count = 0;
-  deque<Location> searchQueue(unassignedAnts.begin(), unassignedAnts.end());
-  map<Location, Search> searches;
-  for (set<Location>::iterator p = unassignedAnts.begin(); p != unassignedAnts.end(); p++) {
-    searches[*p] = Search(*p);
-  }
-  while (!searchQueue.empty()) {
-    Location& antLoc = searchQueue.front();
-    Search &search = searches[antLoc];
-    if (!search.remaining.empty()) {
-      Location& u = search.remaining.front();
-      if (target == u) {
-        routes.push_back(Route(antLoc, u, search.predecessors));
-        count++;
-        if (count >= maxCount)
-          break;
-        unassignedAnts.erase(antLoc);
+  int expansionCount = 0;
+  set<Location> expanded;
+  queue<Location> remaining;
+  map<Location,Location> predecessors;
+  map<Location,int> distances;
+  remaining.push(target);
+  while (!remaining.empty()) {
+    Location& u = remaining.front();
+    if (sources.count(u)) {
+      Route r = Route(target, u, predecessors);
+      r.flip();
+      routes.push_back(r);
+      count++;
+      if (count >= maxCount) {
+        state.bug << "expansion count " << expansionCount << " count " << count << endl;
+        return count;
       }
-      for (int d = 0; d < TDIRECTIONS; d++) {
-        Location v = state.getLocation(u, d);
-        if (!state.grid[v.row][v.col].isWater) {
-          if (!search.expanded.count(v)) {
-            int distance = search.distances[u] + 1;
-            search.expanded.insert(v);
-            search.distances[v] = distance;
-            search.predecessors[v] = u;
-            search.remaining.push(v);
-          }
-        }
-      }
-      search.remaining.pop();
-      if (!search.remaining.empty()) {
-        if (!unassignedAnts.empty()) {
-          searchQueue.push_back(antLoc);
-        }
-      }
-      searchQueue.pop_front();
     }
+    for (int d = 0; d < TDIRECTIONS; d++) {
+      Location v = state.getLocation(u, d);
+      if (!state[v].isWater) {
+        if (!expanded.count(v)) {
+          int distance = distances[u] + 1;
+          expansionCount++;
+          expanded.insert(v);
+          distances[v] = distance;
+          predecessors[v] = u;
+          remaining.push(v);
+        }
+      }
+    }
+    remaining.pop();
   }
+  state.bug << "expansion count " << expansionCount << " count " << count << endl;
   return count;
 }
 
@@ -234,15 +229,6 @@ bool Bot::search(Location &start, set<Location> &ends, Route &route) {
   }
   return false;
 }
-
-class Fcmp {
-  map<Location,int> *f;
- public:
-  Fcmp(map<Location,int> *f) : f(f) {};
-  bool operator() (const Location& a, const Location& b) const {
-    return (*f)[a] < (*f)[b];
-  }
-};
 
 // Find a route from start to the first end it comes across.
 bool Bot::search(Location &start, Location &goal, Route &route) {
@@ -281,14 +267,6 @@ bool Bot::search(Location &start, Location &goal, Route &route) {
   return false;
 }
 
-class Manhattan {
- public:
-  int d;
-  Location a, b;
-  Manhattan(const Location &a, const Location &b, int d) : a(a), b(b), d(d) {};
-};
-bool operator<(const Manhattan &a, const Manhattan &b) { return a.d < b.d; }
-
 // Makes the ants moves for the turn.
 void Bot::makeMoves() {
   orders.clear();
@@ -319,7 +297,7 @@ void Bot::makeMoves() {
   set<Location> antsUsed;
   xroutes.clear();
   for (set<Location>::iterator p = enemyHills.begin(); p != enemyHills.end(); p++)
-    search(myAnts, *p, xroutes, 3);
+    search(myAnts, *p, xroutes, 20);
   // for (vector<Manhattan>::iterator p = ranges.begin(); p != ranges.end(); p++)
   //   if ((*p).d < state.viewradius2) {
   //     Route route;
@@ -373,8 +351,9 @@ void Bot::goLefty(set<Location> &antsUsed) {
       for (int i = 0; i < 4; i++) {
         int nd = ds[i];
         Location dest = state.getLocation(*p, nd);
-        if (!state.grid[dest.row][dest.col].isWater) {
-          if (state.grid[dest.row][dest.col].ant == -1 && !destinations.count(dest)) {
+        Square &square = state[dest];
+        if (!square.isWater && !square.hillPlayer == 0) {
+          if (square.ant == -1 && !destinations.count(dest)) {
             state.makeMove(*p, nd);
             newLefty[dest] = nd;
             destinations.insert(dest);
@@ -411,4 +390,8 @@ Location Search::step(const Location& dest) {
     loc = predecessors[loc];
   }
   return loc;
+}
+
+bool operator<(const Manhattan &a, const Manhattan &b) {
+  return a.d < b.d;
 }

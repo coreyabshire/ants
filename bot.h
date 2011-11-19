@@ -7,7 +7,7 @@
 #include <deque>
 #include <algorithm>
 #include <list>
-#include "State.h"
+#include "state.h"
 
 using namespace std;
 
@@ -26,10 +26,28 @@ class Search {
   Location step(const Location& dest);
 };
 
+class Manhattan {
+ public:
+  int d;
+  Location a, b;
+  Manhattan(const Location &a, const Location &b, int d) : a(a), b(b), d(d) {};
+};
+bool operator<(const Manhattan &a, const Manhattan &b);
+
+class Fcmp {
+  map<Location,int> *f;
+ public:
+  Fcmp(map<Location,int> *f) : f(f) {};
+  bool operator() (const Location& a, const Location& b) const {
+    return (*f)[a] < (*f)[b];
+  }
+};
+
 class Bot {
  public:
   State state;
   Bot();
+  Bot(int rows, int cols);
   void playGame();   //plays a single game of Ants
   void setup();      //set up the bot on initial turn
   void makeMoves();  //makes moves for a single turn
