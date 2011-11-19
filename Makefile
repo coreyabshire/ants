@@ -1,7 +1,7 @@
 CC=g++
 CFLAGS=-O3 -funroll-loops -c
 LDFLAGS=-O2 -lm
-SOURCES=main.cc bot.cc state.cc
+SOURCES=MyBot.cc bot.cc state.cc
 OBJECTS=$(addsuffix .o, $(basename ${SOURCES}))
 EXECUTABLE=MyBot
 
@@ -20,7 +20,7 @@ test: $(TESTOBJECTS) $(TESTEXECUTABLE)
 
 zip:
 	rm MyBot.zip
-	zip MyBot Makefile *.h $(SOURCES)
+	zip MyBot *.h $(SOURCES)
 
 $(EXECUTABLE): $(OBJECTS)
 	$(CC) $(LDFLAGS) $(OBJECTS) -o $@
