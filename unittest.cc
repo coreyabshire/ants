@@ -46,7 +46,7 @@ TEST(Bot, Search4) {
 TEST(State, Sizes) {
   State state(200, 200);
   Location a(0, 0);
-  EXPECT_EQ(2, sizeof a);
+  EXPECT_EQ(4, sizeof a);
   EXPECT_EQ(48, sizeof state.grid[0][0]);
   EXPECT_EQ(200, state.grid.size());
   EXPECT_EQ(40000, state.grid.size() * state.grid[0].size());
