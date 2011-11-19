@@ -75,6 +75,7 @@ class State {
   unsigned short int nSquares, nUnknown, nSeen, nVisible;
   double attackradius, spawnradius, viewradius;
   short int attackradius2, spawnradius2, viewradius2;
+  vector<Location> attackOffsets, viewOffsets, spawnOffsets;
   double loadtime, turntime;
   vector<double> scores;
   bool gameover;
@@ -99,8 +100,10 @@ class State {
   int distance2(const Location &loc1, const Location &loc2);
   int manhattan(const Location &a, const Location &b);
   Location getLocation(const Location &startLoc, int direction);
+  Location getLocationNoWrap(const Location &loc, int direction);
   vector<int> getDirections(const Location &a, const Location &b);
   void markVisible(const Location& a);
+  void calcOffsets(int radius2, vector<Location> &offsets);
 
   void updateVisionInformation();
 

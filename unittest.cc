@@ -51,12 +51,13 @@ TEST(State, Sizes) {
   EXPECT_EQ(200, state.grid.size());
   EXPECT_EQ(40000, state.grid.size() * state.grid[0].size());
   EXPECT_EQ(1920000, state.rows * state.cols * sizeof state.grid[0][0]);
-  EXPECT_EQ(808, sizeof state);
+  EXPECT_EQ(880, sizeof state);
 }
 
 TEST(State, Distance) {
   State state(200, 200);
   Location a(0, 0), b(1, 1), c(5, 5), d(10, 10), e(198, 198);
+  Location u(-1, -1), v(-5, -5);
   EXPECT_FLOAT_EQ(0, state.distance(a, a));
   EXPECT_FLOAT_EQ(1.4142135, state.distance(a, b));
   EXPECT_FLOAT_EQ(7.0710678, state.distance(a, c));
@@ -71,6 +72,7 @@ TEST(State, Distance) {
 TEST(State, Distance2) {
   State state(200, 200);
   Location a(0, 0), b(1, 1), c(5, 5), d(10, 10), e(198, 198);
+  Location u(-1, -1), v(-5, -5);
   EXPECT_EQ(0, state.distance2(a, a));
   EXPECT_EQ(2, state.distance2(a, b));
   EXPECT_EQ(50, state.distance2(a, c));
@@ -80,6 +82,11 @@ TEST(State, Distance2) {
   EXPECT_EQ(32, state.distance2(b, c));
   EXPECT_EQ(18, state.distance2(b, e));
   EXPECT_EQ(50, state.distance2(c, d));
+  EXPECT_EQ(0, state.distance2(u, u));
+  EXPECT_EQ(2, state.distance2(a, u));
+  EXPECT_EQ(2, state.distance2(u, a));
+  EXPECT_EQ(50, state.distance2(a, v));
+  EXPECT_EQ(32, state.distance2(u, v));
 }
 
 TEST(State, Manhattan) {

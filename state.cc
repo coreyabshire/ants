@@ -19,7 +19,10 @@ State::State(int rows, int cols) : gameover(0), turn(0), rows(rows), cols(cols) 
 void State::setup() {
   nSquares = nUnknown = rows * cols;
   nSeen = nVisible = 0;
-  grid = vector<vector<Square> >(rows, vector<Square>(cols, Square()));
+  grid = vector< vector<Square> >(rows, vector<Square>(cols, Square()));
+  calcOffsets(viewradius2, viewOffsets);
+  calcOffsets(attackradius2, attackOffsets);
+  calcOffsets(spawnradius2, spawnOffsets);
 }
 
 // resets all non-water squares to land and clears the bots ant vector
@@ -68,6 +71,42 @@ int State::manhattan(const Location &a, const Location &b) {
       dr = min(r, rows - r),
       dc = min(c, cols - c);
   return dr + dc;
+}
+
+void State::calcOffsets(int radius2, vector<Location> &offsets) {
+  queue<Location> Q;
+  Location sLoc(0,0), cLoc, nLoc;
+
+  Q.push(sLoc);
+
+  set<Location> visited;
+  visited.insert(sLoc);
+
+  while (!Q.empty()) {
+    cLoc = Q.front();
+    Q.pop();
+    
+    for (int d = 0; d < TDIRECTIONS; d++) {
+      nLoc = getLocationNoWrap(cLoc, d);
+      
+      if (!visited.count(nLoc) && distance2(sLoc, nLoc) <= radius2) {
+        offsets.push_back(nLoc);
+        Q.push(nLoc);
+      }
+      visited.insert(nLoc);
+    }
+  }
+  bug << "offsets for " << radius2 << " are ";
+  for (vector<Location>::iterator p = offsets.begin(); p != offsets.end(); p++) {
+    bug << *p << " ";
+  }
+  bug << endl;
+}
+
+// returns the new location from moving in a given direction with the edges wrapped
+Location State::getLocationNoWrap(const Location &loc, int direction) {
+  return Location( (loc.row + DIRECTIONS[direction][0]),
+                   (loc.col + DIRECTIONS[direction][1]));
 }
 
 // returns the new location from moving in a given direction with the edges wrapped
