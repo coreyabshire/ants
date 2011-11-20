@@ -31,11 +31,15 @@ const int NORTH = 0, EAST = 1, SOUTH = 2, WEST = 3;
 class Square {
  public:
   bool isVisible, isWater, isHill, isFood, isSeen;
+  bool isLefty, isStraight;
+  int direction;
   int ant, hillPlayer, lastSeen;
   std::vector<int> deadAnts;
 
   Square() {
     isVisible = isWater = isHill = isFood = isSeen = 0;
+    isLefty = 0;
+    int direction = -1;
     ant = hillPlayer = -1;
   };
 

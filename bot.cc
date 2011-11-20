@@ -41,10 +41,11 @@ void Bot::endTurn() {
 
 bool Bot::doMoveDirection(const Location &a, int d) {
   Location b = state.getLocation(a, d);
-  if (!state[b].isWater && !orders.count(b)) {
+  Square& square = state[b];
+  if (!square.isWater && !orders.count(b)) {
     orders.insert(b);
     state.makeMove(a, d);
-    straight[a] = d;
+    square.direction = d;
     return true;
   }
   else {
@@ -304,7 +305,7 @@ void Bot::makeMoves() {
   doMoveRoutes(xroutes, antsUsed, enemyHills);
   doMoveRoutes(xroutes, antsUsed, food);
 
-  goLefty(antsUsed);
+  goLefty2(antsUsed);
   state.bug << "unknown "
             << state.turn << " "
             << state.myAnts.size() << " "
@@ -380,6 +381,72 @@ void Bot::goLefty(set<Location> &antsUsed) {
   lefty = newLefty;
 }
 
+// General left favoring wall exploring algorithm.
+void Bot::goLefty2(set<Location> &antsUsed) {
+  set<Location> destinations;
+  for (vector<Location>::iterator p = state.myAnts.begin(); p != state.myAnts.end(); p++) {
+    Square &asquare = state.grid[(*p).row][(*p).col];
+    if (antsUsed.count(*p))
+      continue;
+    if (!asquare.direction == -1)
+      //straight[*p] = ((*p).row % 2 == 0) ?
+      //   (((*p).col % 2 == 0) ? NORTH : SOUTH) :
+      //   (((*p).col % 2 == 0) ? EAST : WEST);
+      asquare.direction = rand() % 4;
+    if (!asquare.isLefty) {
+      int d = asquare.direction;
+      Location dest = state.getLocation(*p, d);
+      Square &square = state[dest];
+      if (!square.isWater && !square.hillPlayer == 0) {
+        if (square.ant == -1 && !destinations.count(dest)) {
+          state.makeMove(*p, d);
+          asquare.direction = -1;
+          asquare.isLefty = false;
+          square.direction = d;
+          square.isLefty = false;
+          destinations.insert(dest);
+        }
+        else {
+          asquare.direction = -1;
+          asquare.isLefty = false;
+          square.direction = dleft[d];
+          square.isLefty = false;
+          destinations.insert(*p);
+        }
+      }
+      else {
+        asquare.isLefty = true;
+        asquare.direction = dright[d];
+      }
+    }
+    if (asquare.isLefty) {
+      int d = asquare.direction;
+      int ds[] = { dleft[d], d, dright[d], dbehind[d] };
+      for (int i = 0; i < 4; i++) {
+        int nd = ds[i];
+        Location dest = state.getLocation(*p, nd);
+        Square &square = state[dest];
+        if (!square.isWater && !square.hillPlayer == 0) {
+          if (square.ant == -1 && !destinations.count(dest)) {
+            state.makeMove(*p, nd);
+            asquare.direction = -1;
+            asquare.isLefty = false;
+            square.direction = nd;
+            square.isLefty = true;
+            destinations.insert(dest);
+            break;
+          }
+          else {
+            asquare.direction = dright[d];
+            asquare.isLefty = true;
+            destinations.insert(*p);
+            break;
+          }
+        }
+      }
+    }
+  }
+}
 
 Search::Search(const Location &start) : start(start), food(0), hills(0), unseen(0) {
   expanded.insert(start);

@@ -64,6 +64,7 @@ class Bot {
   map<Location,Route> routes;
 
   void goLefty(set<Location> &antsUsed);  //makes moves for a single turn
+  void goLefty2(set<Location> &antsUsed);  //makes moves for a single turn
   bool doMoveDirection(const Location &ant, int d);
   bool doMoveLocation(const Location &antLoc, const Location &destLoc);
   bool doMoveRoute(Route &route, set<Location> &antsUsed);
