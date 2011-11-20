@@ -21,6 +21,8 @@ CFLAGS+=-g -DDEBUG
 all: $(OBJECTS) $(EXECUTABLE) $(VIZEXECUTABLE) test
 
 test: $(TESTOBJECTS) $(TESTEXECUTABLE)
+	tools/test_bot.sh ./MyBot >game_logs/test_out.txt
+	cmp game_logs/test_pass.txt game_logs/test_out.txt
 	./UnitTest
 
 zip:

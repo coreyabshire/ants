@@ -77,18 +77,19 @@ void State::calcOffsets(int radius2, vector<Location> &offsets) {
   queue<Location> Q;
   Location a(0,0);
   Q.push(a);
-  set<Location> visited;
-  visited.insert(a);
+  vector< vector<bool> > visited(rows, vector<bool>(cols, false));
+  visited[a.row][a.col] = true;
   while (!Q.empty()) {
     Location u = Q.front();
     Q.pop();
     for (int d = 0; d < TDIRECTIONS; d++) {
       Location v = getLocationNoWrap(u, d);
-      if (!visited.count(v) && distance2(a, v) <= radius2) {
+      Location e = getLocation(u, d);
+      if (!visited[e.row][e.col] && distance2(a, v) <= radius2) {
         offsets.push_back(v);
         Q.push(v);
       }
-      visited.insert(v);
+      visited[e.row][e.col] = true;
     }
   }
 }
@@ -108,6 +109,10 @@ Location State::getLocation(const Location &loc, int direction) {
 Location State::getLocation(const Location &loc, const Location &off) {
   return Location( (loc.row + off.row + rows) % rows,
                    (loc.col + off.col + cols) % cols );
+}
+
+Location State::randomLocation() {
+  return Location(rand() % rows, rand() % cols);
 }
 
 vector<int> State::getDirections(const Location &a, const Location &b) {

@@ -94,6 +94,11 @@ TEST(State, Distance2) {
   EXPECT_EQ(32, state.distance2(u, v));
 }
 
+TEST(State, Init) {
+  State state(200, 200);
+  Location a(1, 1), b(3, 3), c(9, 8);
+}
+
 TEST(State, Manhattan) {
   State state(10, 10);
   Location a(1, 1), b(3, 3), c(9, 8);
@@ -102,6 +107,54 @@ TEST(State, Manhattan) {
   EXPECT_EQ(4, state.manhattan(b, a));
   EXPECT_EQ(5, state.manhattan(a, c));
   EXPECT_EQ(5, state.manhattan(c, a));
+}
+
+TEST(State, CalcOffsets) {
+  State state(200, 200);
+  vector<Location> offsets;
+  Timer timer;
+  timer.start();
+  state.calcOffsets(300, offsets);
+  EXPECT_PRED_FORMAT2(::testing::FloatLE, 0.001, timer.getTime());
+}
+
+TEST(State, DistanceSpeed) {
+  State state(200, 200);
+  vector<Location> a;
+  for (int i = 0; i < 1000; i++)
+    a.push_back(state.randomLocation());
+  Timer timer;
+  timer.start();
+  for (int i = 0; i < 1000000; i++) {
+    double distance = state.distance(a[rand()%1000], a[rand()%1000]);
+  }
+  EXPECT_PRED_FORMAT2(::testing::FloatLE, 0.001, timer.getTime());
+}
+
+TEST(State, Distance2Speed) {
+  State state(200, 200);
+  vector<Location> a;
+  for (int i = 0; i < 1000; i++)
+    a.push_back(state.randomLocation());
+  Timer timer;
+  timer.start();
+  for (int i = 0; i < 1000000; i++) {
+    int distance = state.distance2(a[rand()%1000], a[rand()%1000]);
+  }
+  EXPECT_PRED_FORMAT2(::testing::FloatLE, 0.001, timer.getTime());
+}
+
+TEST(State, ManhattanSpeed) {
+  State state(200, 200);
+  vector<Location> a;
+  for (int i = 0; i < 1000; i++)
+    a.push_back(state.randomLocation());
+  Timer timer;
+  timer.start();
+  for (int i = 0; i < 1000000; i++) {
+    int distance = state.manhattan(a[rand()%1000], a[rand()%1000]);
+  }
+  EXPECT_PRED_FORMAT2(::testing::FloatLE, 0.001, timer.getTime());
 }
 
 TEST(State, NumAttackAnts) {

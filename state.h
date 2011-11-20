@@ -102,6 +102,7 @@ class State {
   Location getLocation(const Location &startLoc, int direction);
   Location getLocation(const Location &loc, const Location &off);
   Location getLocationNoWrap(const Location &loc, int direction);
+  Location randomLocation();
   vector<int> getDirections(const Location &a, const Location &b);
   void markVisible(const Location& a);
   void calcOffsets(int radius2, vector<Location> &offsets);
@@ -138,5 +139,14 @@ class Route {
 bool operator<(const Route &a, const Route &b);
 bool operator==(const Route &a, const Route &b);
 ostream& operator<<(ostream& os, const Route &r);
+
+template <class T> class Grid {
+ public:
+  int rows, cols;
+  vector< vector<T> > data;
+  Grid(int rows, int cols, T init) : rows(rows), cols(cols), data(rows, vector<T>(cols, init)) {};
+  T get(const Location &a) { return data[a.row][a.col]; }
+  void put(const Location &a, const T& v) { data[a.row][a.col] = v; }
+};
 
 #endif //STATE_H_
