@@ -68,6 +68,14 @@ class Square {
     hillPlayer = hillPlayer2;
     lastSeen = turn;
   };
+
+  float influence() {
+    float sum = 0.0;
+    for (int i = 0; i < kFactors; i++) {
+      sum += inf[i] * weights[i];
+    }
+    return sum;
+  };
 };
 
 ostream& operator<<(ostream& os, const Square &square);

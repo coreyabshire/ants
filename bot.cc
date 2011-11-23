@@ -279,15 +279,14 @@ void Bot::makeMoves() {
   vector< vector<bool> > used(state.rows, vector<bool>(state.cols, false));
   for (int ant = 0; ant < (int)state.myAnts.size(); ant++) {
     Location a = state.myAnts[ant];
+    Square &as = state.grid[a.row][a.row];
     int bestd = -1;
-    float bestf = 0.0;
+    float bestf = 0.0;//as.influence();
     for (int d = 0; d < TDIRECTIONS; d++) {
       Location b = state.getLocation(a, d);
       Square &bs = state.grid[b.row][b.col];
       if (!used[b.row][b.col]) {
-        float f = 0.0;
-        for (int k = 0; k < kFactors; k++)
-          f += bs.inf[k] * weights[k];
+        float f = bs.influence();
         if (f > bestf) {
           bestd = d;
           bestf = f;

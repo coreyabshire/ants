@@ -51,82 +51,6 @@ void State::setup() {
   dumpInfluenceInformation();
 }
 
-void State::updateInfluenceInformation() {
-  for (int i = 0; i < 10; i++) {
-    vector< vector< vector<float> > > temp(rows, vector< vector<float> >(cols, vector<float>(kFactors, 0.0)));
-    for (int r = 0; r < rows; r++) {
-      for (int c = 0; c < cols; c++) {
-        Location a(r,c);
-        Square &as = grid[a.row][a.col];
-        if (as.isWater) {
-          for (int f = 0; f < kFactors; f++) {
-            temp[r][c][f] = 0.0;
-          }
-        }
-        else {
-          if (as.isFood) {
-            temp[r][c][FOOD] = 1.0;
-          }
-          if (as.hillPlayer > 0) {
-            temp[r][c][TARGET] = 1.0;
-          }
-          if (!as.isKnown) {
-            temp[r][c][UNKNOWN] = 1.0;
-          }
-          if (as.ant == 0) {
-            temp[r][c][FOOD] *= 0.5;
-            temp[r][c][UNKNOWN] *= 0.7;
-          }
-          for (int d = 0; d < TDIRECTIONS; d++) {
-            Location b = getLocation(a, d);
-            Square &bs = grid[b.row][b.col];
-            for (int f = 0; f < kFactors; f++) {
-              float g = bs.inf[f] * 0.97;
-              if (g > temp[r][c][f]) {
-                temp[r][c][f] = g;
-              }
-            }
-          }
-        }
-      }
-    }
-    float total_weight = 0.0;
-    for (int f = 0; f < 3; f++) {
-      total_weight += weights[f];
-    }
-    for (int r = 0; r < rows; r++) {
-      for (int c = 0; c < cols; c++) {
-        float t = 0.0;
-        for (int f = 0; f < 3; f++) {
-          grid[r][c].inf[f] = temp[r][c][f];
-          t += temp[r][c][f] * weights[f];
-        }
-        grid[r][c].inf[3] = t / total_weight;
-      }
-    }
-  }
-  dumpInfluenceInformation();
-}
-
-void State::dumpInfluenceInformation() {
-  if (turn == 0) {
-    bug << "inf rows " << rows << endl;
-    bug << "inf cols " << cols << endl;
-    bug << "inf factors " << kFactors << endl;
-  }
-  bug << "inf turn " << turn << endl;
-  for (int f = 0; f < kFactors; f++) {
-    bug << "inf factor " << f << endl;
-    for (int r = 0; r < rows; r++) {
-      bug << "inf row " << r;
-      for (int c = 0; c < cols; c++) {
-        bug << " " << grid[r][c].inf[f];
-      }
-      bug << endl;
-    }
-  }
-}
-
 // resets all non-water squares to land and clears the bots ant vector
 void State::reset() {
   nVisible = 0;
@@ -251,6 +175,87 @@ void State::updateVisionInformation() {
   for (vector<Location>::iterator p = myAnts.begin(); p != myAnts.end(); p++)
     for (vector<Offset>::iterator o = offsets.begin(); (*o).d2 <= viewradius2; o++)
       markVisible(addOffset(*p, *o));
+}
+
+void State::updateInfluenceInformation() {
+  for (int i = 0; i < 10; i++) {
+    vector< vector< vector<float> > > temp(rows, vector< vector<float> >(cols, vector<float>(kFactors, 0.0)));
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) {
+        Location a(r,c);
+        Square &as = grid[a.row][a.col];
+        if (as.isWater) {
+          for (int f = 0; f < kFactors; f++) {
+            temp[r][c][f] = 0.0;
+          }
+        }
+        else {
+          if (as.isFood) {
+            temp[r][c][FOOD] = 1.0;
+          }
+          if (as.hillPlayer > 0) {
+            temp[r][c][TARGET] = 1.0;
+          }
+          if (!as.isKnown) {
+            temp[r][c][UNKNOWN] = 1.0;
+          }
+          if (as.ant == 0) {
+            temp[r][c][FOOD] *= 0.5;
+            temp[r][c][UNKNOWN] *= 0.7;
+          }
+          for (int d = 0; d < TDIRECTIONS; d++) {
+            Location b = getLocation(a, d);
+            Square &bs = grid[b.row][b.col];
+            for (int f = 0; f < kFactors; f++) {
+              float g = bs.inf[f] * 0.97;
+              if (g > temp[r][c][f]) {
+                temp[r][c][f] = g;
+              }
+            }
+          }
+        }
+      }
+    }
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) {
+        for (int f = 0; f < kFactors; f++) {
+          grid[r][c].inf[f] = temp[r][c][f];
+        }
+      }
+    }
+  }
+  dumpInfluenceInformation();
+}
+
+void State::dumpInfluenceInformation() {
+  if (turn == 0) {
+    bug << "inf rows " << rows << endl;
+    bug << "inf cols " << cols << endl;
+    bug << "inf factors " << kFactors + 1 << endl;
+  }
+  bug << "inf turn " << turn << endl;
+  for (int f = 0; f < kFactors; f++) {
+    bug << "inf factor " << f << endl;
+    for (int r = 0; r < rows; r++) {
+      bug << "inf row " << r;
+      for (int c = 0; c < cols; c++) {
+        bug << " " << grid[r][c].inf[f];
+      }
+      bug << endl;
+    }
+  }
+  bug << "inf factor " << kFactors << endl;
+  float total_weight = 0.0;
+  for (int f = 0; f < kFactors; f++) {
+    total_weight += weights[f];
+  }
+  for (int r = 0; r < rows; r++) {
+    bug << "inf row " << r;
+    for (int c = 0; c < cols; c++) {
+      bug << " " << grid[r][c].influence() / total_weight;
+    }
+    bug << endl;
+  }
 }
 
 // This is the output function for a state. It will add a char map
