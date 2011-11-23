@@ -5,9 +5,12 @@ Visualizer
 *.zip
 debug.txt
 bug*.txt
+inf*.txt
+lefty.txt
 time.txt
 tools/
 game_logs/
 *~
+.RData
 .Rhistory
 temp.cc
