@@ -1,5 +1,40 @@
 #include "state.h"
 
+Square::Square() {
+  isVisible = isWater = isHill = isFood = isKnown = 0;
+  isLefty = 0;
+  isFood2 = isHill2 = 0;
+  foodScent = 0.0;
+  for (int i = 0; i < kFactors; i++)
+    inf[i] = 0.0;
+  direction = -1;
+  ant = hillPlayer = hillPlayer2 = -1;
+}
+
+//resets the information for the square except water information
+void Square::reset() {
+  isVisible = isHill2 = isFood2 = 0;
+  foodScent = 0.0;
+  ant = hillPlayer2 = -1;
+  deadAnts.clear();
+}
+
+void Square::markVisible(int turn) {
+  isVisible = isKnown = 1;
+  isFood = isFood2;
+  isHill = isHill2;
+  hillPlayer = hillPlayer2;
+  lastSeen = turn;
+}
+
+float Square::influence() {
+  float sum = 0.0;
+  for (int i = 0; i < kFactors; i++) {
+    sum += inf[i] * weights[i];
+  }
+  return sum;
+}
+
 // constructor
 State::State() : gameover(0), turn(0) {
   bug.open("./debug.txt");
@@ -245,14 +280,14 @@ void State::dumpInfluenceInformation() {
     }
   }
   bug << "inf factor " << kFactors << endl;
-  float total_weight = 0.0;
+  float weight = 0.0;
   for (int f = 0; f < kFactors; f++) {
-    total_weight += weights[f];
+    weight += weights[f];
   }
   for (int r = 0; r < rows; r++) {
     bug << "inf row " << r;
     for (int c = 0; c < cols; c++) {
-      bug << " " << grid[r][c].influence() / total_weight;
+      bug << " " << grid[r][c].influence() / weight;
     }
     bug << endl;
   }

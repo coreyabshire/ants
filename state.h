@@ -27,9 +27,9 @@ const char CDIRECTIONS[4] = {'N', 'E', 'S', 'W'};
 const int DIRECTIONS[4][2] = { {-1, 0}, {0, 1}, {1, 0}, {0, -1} }; //{N, E, S, W}
 const int NORTH = 0, EAST = 1, SOUTH = 2, WEST = 3;
 
-enum { FOOD=0, TARGET=1, UNKNOWN=2, ENEMY=3 };
-const int kFactors = 4;
-const float weights[kFactors] = {1.0, 1.9, 0.2, 0.0};
+enum { LAND, FOOD, TARGET, UNKNOWN, ENEMY };
+const int kFactors = 5;
+const float weights[kFactors] = {0.0, 1.0, 1.9, 0.2, 0.0};
 
 // A square in the grid.
 class Square {
@@ -42,40 +42,10 @@ class Square {
   float inf[kFactors];
   vector<int> deadAnts;
 
-  Square() {
-    isVisible = isWater = isHill = isFood = isKnown = 0;
-    isLefty = 0;
-    isFood2 = isHill2 = 0;
-    foodScent = 0.0;
-    for (int i = 0; i < kFactors; i++)
-      inf[i] = 0.0;
-    direction = -1;
-    ant = hillPlayer = hillPlayer2 = -1;
-  };
-
-  //resets the information for the square except water information
-  void reset() {
-    isVisible = isHill2 = isFood2 = 0;
-    foodScent = 0.0;
-    ant = hillPlayer2 = -1;
-    deadAnts.clear();
-  };
-
-  void markVisible(int turn) {
-    isVisible = isKnown = 1;
-    isFood = isFood2;
-    isHill = isHill2;
-    hillPlayer = hillPlayer2;
-    lastSeen = turn;
-  };
-
-  float influence() {
-    float sum = 0.0;
-    for (int i = 0; i < kFactors; i++) {
-      sum += inf[i] * weights[i];
-    }
-    return sum;
-  };
+  Square();
+  void reset();
+  void markVisible(int turn);
+  float influence();
 };
 
 ostream& operator<<(ostream& os, const Square &square);
