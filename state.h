@@ -34,11 +34,13 @@ class Square {
   bool isLefty, isStraight;
   int direction;
   int ant, hillPlayer, lastSeen;
+  double foodScent;
   std::vector<int> deadAnts;
 
   Square() {
     isVisible = isWater = isHill = isFood = isSeen = 0;
     isLefty = 0;
+    foodScent = 0.0;
     int direction = -1;
     ant = hillPlayer = -1;
   };
@@ -46,6 +48,7 @@ class Square {
   //resets the information for the square except water information
   void reset() {
     isVisible = isHill = isFood = 0;
+    foodScent = 0.0;
     ant = hillPlayer = -1;
     deadAnts.clear();
   };

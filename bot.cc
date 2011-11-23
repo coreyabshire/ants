@@ -305,7 +305,7 @@ void Bot::makeMoves() {
   doMoveRoutes(xroutes, antsUsed, enemyHills);
   doMoveRoutes(xroutes, antsUsed, food);
 
-  goLefty2(antsUsed);
+  goLefty(antsUsed);
   state.bug << "unknown "
             << state.turn << " "
             << state.myAnts.size() << " "
