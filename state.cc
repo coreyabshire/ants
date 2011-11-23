@@ -20,9 +20,32 @@ void State::setup() {
   nSquares = nUnknown = rows * cols;
   nSeen = nVisible = 0;
   grid = vector< vector<Square> >(rows, vector<Square>(cols, Square()));
-  calcOffsets(viewradius2, viewOffsets);
-  calcOffsets(attackradius2, attackOffsets);
-  calcOffsets(spawnradius2, spawnOffsets);
+
+  int n = max(rows, cols);
+  bug << "setup grid for size " << n << endl;
+
+  distance2Grid = vector< vector<int> >(n, vector<int>(n, 0));
+  distanceGrid = vector< vector<double> >(n, vector<double>(n, 0.0));
+                                                
+  bug << "pre-calculating distances" << endl;
+  for (int r = 0; r < n; r++) {
+    for (int c = 0; c < n; c++) {
+      int d = r * r + c * c;
+      distance2Grid[r][c] = d;
+      distanceGrid[r][c] = sqrt(d);
+    }
+  }
+
+  bug << "pre-calculating offsets" << endl;
+  for (int r = (1 - n); r < n; r++) {
+    for (int c = (1 - n); c < n; c++) {
+      int ar = abs(r), ac = abs(c);
+      offsets.push_back(Offset(distanceGrid[ar][ac], distance2Grid[ar][ac], r, c));
+    }
+  }
+  
+  bug << "sorting offsets" << endl;
+  sort(offsets.begin(), offsets.end());
 }
 
 // resets all non-water squares to land and clears the bots ant vector
@@ -47,21 +70,34 @@ void State::makeMove(const Location &loc, int d) {
   grid[loc.row][loc.col].ant = -1;
 }
 
+inline int addWrap(int a, int b, int max) {
+  return (a + b + max) % max;
+}
+
+inline int diffWrap(int a, int b, int w) {
+  int d = abs(a - b);
+  return min(d, w - d);
+}
+
+inline Location State::addOffset(const Location &a, const Offset &o) {
+  return Location(addWrap(a.row, o.r, rows), addWrap(a.col, o.c, cols));
+}
+
+inline int absdiff(int a, int b) {
+  return a > b ? a - b : b - a;
+}
+
 // returns the euclidean distance between two locations with the edges wrapped
 double State::distance(const Location &a, const Location &b) {
-  int d1 = abs(a.row - b.row),
-      d2 = abs(a.col - b.col),
-      dr = min(d1, rows - d1),
-      dc = min(d2, cols - d2);
-  return sqrt(dr*dr + dc*dc);
+  int r = diffWrap(a.row, b.row, rows);
+  int c = diffWrap(a.col, b.col, cols);
+  return distanceGrid[r][c];
 }
 
 int State::distance2(const Location &a, const Location &b) {
-  int d1 = abs(a.row - b.row),
-      d2 = abs(a.col - b.col),
-      dr = min(d1, rows - d1),
-      dc = min(d2, cols - d2);
-  return dr * dr + dc * dc;
+  int r = diffWrap(a.row, b.row, rows);
+  int c = diffWrap(a.col, b.col, cols);
+  return distance2Grid[r][c];
 }
 
 // returns the euclidean distance between two locations with the edges wrapped
@@ -71,27 +107,6 @@ int State::manhattan(const Location &a, const Location &b) {
       dr = min(r, rows - r),
       dc = min(c, cols - c);
   return dr + dc;
-}
-
-void State::calcOffsets(int radius2, vector<Location> &offsets) {
-  queue<Location> Q;
-  Location a(0,0);
-  Q.push(a);
-  vector< vector<bool> > visited(rows, vector<bool>(cols, false));
-  visited[a.row][a.col] = true;
-  while (!Q.empty()) {
-    Location u = Q.front();
-    Q.pop();
-    for (int d = 0; d < TDIRECTIONS; d++) {
-      Location v = getLocationNoWrap(u, d);
-      Location e = getLocation(u, d);
-      if (!visited[e.row][e.col] && distance2(a, v) <= radius2) {
-        offsets.push_back(v);
-        Q.push(v);
-      }
-      visited[e.row][e.col] = true;
-    }
-  }
 }
 
 // returns the new location from moving in a given direction with the edges wrapped
@@ -156,8 +171,8 @@ void State::markVisible(const Location& a) {
 void State::updateVisionInformation() {
   for (vector<Location>::iterator p = myAnts.begin(); p != myAnts.end(); p++) {
     markVisible(*p);
-    for (vector<Location>::iterator o = viewOffsets.begin(); o != viewOffsets.end(); o++)
-      markVisible(getLocation(*p, *o));
+    for (vector<Offset>::iterator o = offsets.begin(); (*o).d2 <= viewradius2; o++)
+      markVisible(addOffset(*p, *o));
   }
 }
 
@@ -355,6 +370,13 @@ bool operator!=(const Location &a, const Location &b) {
   return a.row != b.row || a.col != b.col;
 }
 
-std::ostream& operator<<(std::ostream &os, const Location &loc) {
+ostream& operator<<(std::ostream &os, const Location &loc) {
   return os << "(" << (int)loc.row << "," << (int)loc.col << ")";
 }
+
+bool operator<(const Offset &a, const Offset &b) {
+  return a.d2 == b.d2
+      ? (a.r == b.r ? a.c < b.c : a.r < b.r)
+      : (a.d2 < b.d2);
+}
+

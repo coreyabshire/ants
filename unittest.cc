@@ -51,7 +51,7 @@ TEST(State, Sizes) {
   EXPECT_EQ(200, state.grid.size());
   EXPECT_EQ(40000, state.grid.size() * state.grid[0].size());
   EXPECT_EQ(2240000, state.rows * state.cols * sizeof state.grid[0][0]);
-  EXPECT_EQ(904, sizeof state);
+  EXPECT_EQ(880, sizeof state);
 }
 
 TEST(State, Distance) {
@@ -107,15 +107,6 @@ TEST(State, Manhattan) {
   EXPECT_EQ(4, state.manhattan(b, a));
   EXPECT_EQ(5, state.manhattan(a, c));
   EXPECT_EQ(5, state.manhattan(c, a));
-}
-
-TEST(State, CalcOffsets) {
-  State state(200, 200);
-  vector<Location> offsets;
-  Timer timer;
-  timer.start();
-  state.calcOffsets(300, offsets);
-  EXPECT_PRED_FORMAT2(::testing::FloatLE, 0.001, timer.getTime());
 }
 
 TEST(State, DistanceSpeed) {

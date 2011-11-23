@@ -75,6 +75,12 @@ bool operator==(const Location &a, const Location &b);
 bool operator!=(const Location &a, const Location &b);
 std::ostream& operator<<(std::ostream &os, const Location &loc);
 
+struct Offset {
+  double d;
+  int d2, r, c;
+  Offset(double d, int d2, int r, int c) : d(d), d2(d2), r(r), c(c) {};
+};
+
 // store current state information
 class State {
  public:
@@ -82,13 +88,16 @@ class State {
   unsigned short int nSquares, nUnknown, nSeen, nVisible;
   double attackradius, spawnradius, viewradius;
   short int attackradius2, spawnradius2, viewradius2;
-  vector<Location> attackOffsets, viewOffsets, spawnOffsets, neighborOffsets;
+  vector<Offset> offsets;
   double loadtime, turntime;
   vector<double> scores;
   bool gameover;
   int64_t seed;
 
   vector< vector<Square> > grid;
+  vector< vector<double> > distanceGrid;
+  vector< vector<int> > distance2Grid;
+
   vector<Location> myAnts, enemyAnts, myHills, enemyHills, food;
 
   Timer timer;
@@ -113,12 +122,17 @@ class State {
   vector<int> getDirections(const Location &a, const Location &b);
   void markVisible(const Location& a);
   void calcOffsets(int radius2, vector<Location> &offsets);
+  inline Location addOffset(const Location &a, const Offset &o);
 
   void updateVisionInformation();
 
   Square& squareAt(Location a) { return grid[a.row][a.col]; }
   Square& operator[](Location a) { return squareAt(a); }
 };
+
+inline int addWrap(int a, int b, int max);
+inline int diffWrap(int a, int b, int max);
+inline Location addOffset(const Location &a, const Offset &o);
 
 ostream& operator<<(ostream &os, const State &state);
 istream& operator>>(istream &is, State &state);
