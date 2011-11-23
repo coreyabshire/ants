@@ -169,11 +169,9 @@ void State::markVisible(const Location& a) {
 // This function will update the lastSeen value for any squares currently
 // visible by one of your live ants.
 void State::updateVisionInformation() {
-  for (vector<Location>::iterator p = myAnts.begin(); p != myAnts.end(); p++) {
-    markVisible(*p);
+  for (vector<Location>::iterator p = myAnts.begin(); p != myAnts.end(); p++)
     for (vector<Offset>::iterator o = offsets.begin(); (*o).d2 <= viewradius2; o++)
       markVisible(addOffset(*p, *o));
-  }
 }
 
 // This is the output function for a state. It will add a char map
@@ -372,6 +370,10 @@ bool operator!=(const Location &a, const Location &b) {
 
 ostream& operator<<(std::ostream &os, const Location &loc) {
   return os << "(" << (int)loc.row << "," << (int)loc.col << ")";
+}
+
+ostream& operator<<(ostream& os, const Offset &o) {
+  return os << o.d2 << " " << o.r << "," << o.c;
 }
 
 bool operator<(const Offset &a, const Offset &b) {

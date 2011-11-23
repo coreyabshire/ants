@@ -81,6 +81,9 @@ struct Offset {
   Offset(double d, int d2, int r, int c) : d(d), d2(d2), r(r), c(c) {};
 };
 
+bool operator<(const Offset &a, const Offset &b);
+ostream& operator<<(ostream& os, const Offset &o);
+
 // store current state information
 class State {
  public:
