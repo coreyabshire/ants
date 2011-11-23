@@ -19,6 +19,7 @@ void Bot::playGame() {
   // continues making moves while the game is not over
   while (cin >> state) {
     state.updateVisionInformation();
+    state.updateInfluenceInformation();
     makeMoves();
     endTurn();
   }
@@ -269,8 +270,45 @@ int Bot::numAttackAnts(int totalAnts) {
   return min((double)totalAnts / 4.0, 7.0);
 }
 
-// Makes the ants moves for the turn.
+//makes the bots moves for the turn
 void Bot::makeMoves() {
+  state.bug << "turn " << state.turn << ":" << endl;
+  state.bug << state << endl;
+
+  //picks out moves for each ant
+  vector< vector<bool> > used(state.rows, vector<bool>(state.cols, false));
+  for (int ant = 0; ant < (int)state.myAnts.size(); ant++) {
+    Location a = state.myAnts[ant];
+    int bestd = -1;
+    float bestf = 0.0;
+    for (int d = 0; d < TDIRECTIONS; d++) {
+      Location b = state.getLocation(a, d);
+      Square &bs = state.grid[b.row][b.col];
+      if (!used[b.row][b.col]) {
+        float f = 0.0;
+        for (int k = 0; k < kFactors; k++)
+          f += bs.inf[k] * weights[k];
+        if (f > bestf) {
+          bestd = d;
+          bestf = f;
+        }
+      }
+    }
+    if (bestd != -1) {
+      Location b = state.getLocation(a, bestd);
+      state.makeMove(a, bestd);
+      used[b.row][b.col] = true;
+    }
+    else {
+      used[a.row][a.col] = true;
+    }
+  }
+
+  state.bug << "time taken: " << state.timer.getTime() << "ms" << endl << endl;
+}
+
+// Makes the ants moves for the turn.
+void Bot::oldMakeMoves() {
   orders.clear();
 
   // keep ants from moving onto our own hills and preventing spawning
