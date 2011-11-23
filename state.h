@@ -34,10 +34,10 @@ const float weights[kFactors] = {1.0, 1.9, 0.2, 0.0};
 // A square in the grid.
 class Square {
  public:
-  bool isVisible, isWater, isHill, isFood, isKnown;
+  bool isVisible, isWater, isHill, isFood, isKnown, isFood2, isHill2;
   bool isLefty, isStraight;
   int direction;
-  int ant, hillPlayer, lastSeen;
+  int ant, hillPlayer, hillPlayer2, lastSeen;
   double foodScent;
   float inf[kFactors];
   vector<int> deadAnts;
@@ -45,28 +45,32 @@ class Square {
   Square() {
     isVisible = isWater = isHill = isFood = isKnown = 0;
     isLefty = 0;
+    isFood2 = isHill2 = 0;
     foodScent = 0.0;
     for (int i = 0; i < kFactors; i++)
       inf[i] = 0.0;
     direction = -1;
-    ant = hillPlayer = -1;
+    ant = hillPlayer = hillPlayer2 = -1;
   };
 
   //resets the information for the square except water information
   void reset() {
-    isVisible = isHill = isFood = 0;
+    isVisible = isHill2 = isFood2 = 0;
     foodScent = 0.0;
-    ant = hillPlayer = -1;
+    ant = hillPlayer2 = -1;
     deadAnts.clear();
   };
 
   void markVisible(int turn) {
     isVisible = isKnown = 1;
+    isFood = isFood2;
+    isHill = isHill2;
+    hillPlayer = hillPlayer2;
     lastSeen = turn;
   };
 };
 
-std::ostream& operator<<(std::ostream& os, const Square &square);
+ostream& operator<<(ostream& os, const Square &square);
 
 // A grid location.
 class Location {
@@ -80,7 +84,7 @@ class Location {
 bool operator<(const Location &a, const Location &b);
 bool operator==(const Location &a, const Location &b);
 bool operator!=(const Location &a, const Location &b);
-std::ostream& operator<<(std::ostream &os, const Location &loc);
+ostream& operator<<(ostream &os, const Location &loc);
 
 struct Offset {
   double d;
@@ -172,14 +176,5 @@ class Route {
 bool operator<(const Route &a, const Route &b);
 bool operator==(const Route &a, const Route &b);
 ostream& operator<<(ostream& os, const Route &r);
-
-template <class T> class Grid {
- public:
-  int rows, cols;
-  vector< vector<T> > data;
-  Grid(int rows, int cols, T init) : rows(rows), cols(cols), data(rows, vector<T>(cols, init)) {};
-  T get(const Location &a) { return data[a.row][a.col]; }
-  void put(const Location &a, const T& v) { data[a.row][a.col] = v; }
-};
 
 #endif //STATE_H_

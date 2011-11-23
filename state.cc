@@ -52,15 +52,6 @@ void State::setup() {
 }
 
 void State::updateInfluenceInformation() {
-  for (int r = 0; r < rows; r++) {
-    for (int c = 0; c < cols; c++) {
-      Location a(r,c);
-      Square &as = grid[a.row][a.col];
-      for (int f = 0; f < kFactors; f++) {
-        //        as.inf[f] = 0.0;
-      }
-    }
-  }
   for (int i = 0; i < 10; i++) {
     vector< vector< vector<float> > > temp(rows, vector< vector<float> >(cols, vector<float>(kFactors, 0.0)));
     for (int r = 0; r < rows; r++) {
@@ -114,15 +105,7 @@ void State::updateInfluenceInformation() {
       }
     }
   }
-  // bug.file.width(3);
-  // for (int r = 0; r < rows; r++) {
-  //   for (int c = 0; c < cols; c++) {
-  //     Location a(r,c);
-  //     Square &as = grid[a.row][a.col];
-  //     bug << as.inf[FOOD] << " ";
-  //   }
-  //   bug << endl;
-  // }
+  dumpInfluenceInformation();
 }
 
 void State::dumpInfluenceInformation() {
@@ -358,7 +341,7 @@ istream& operator>>(istream &is, State &state) {
       }
       else if(inputType == "f") { //food square
         is >> row >> col;
-        state.grid[row][col].isFood = 1;
+        state.grid[row][col].isFood2 = 1;
         state.food.push_back(Location(row, col));
       }
       else if(inputType == "a") { //live ant square
@@ -375,8 +358,8 @@ istream& operator>>(istream &is, State &state) {
       }
       else if(inputType == "h") {
         is >> row >> col >> player;
-        state.grid[row][col].isHill = 1;
-        state.grid[row][col].hillPlayer = player;
+        state.grid[row][col].isHill2 = 1;
+        state.grid[row][col].hillPlayer2 = player;
         if(player == 0)
           state.myHills.push_back(Location(row, col));
         else
@@ -392,7 +375,7 @@ istream& operator>>(istream &is, State &state) {
       }
       else if(inputType == "go") { //end of turn input
         if(state.gameover)
-          is.setstate(std::ios::failbit);
+          is.setstate(ios::failbit);
         else
           state.timer.start();
         break;
@@ -437,7 +420,7 @@ ostream& operator<<(ostream& os, const Route &r) {
   os << r.start << " " << r.end << " " << r.steps.size();
 }
 
-std::ostream& operator<<(std::ostream& os, const Square &square) {
+ostream& operator<<(ostream& os, const Square &square) {
   if (square.isVisible)
     os << "V";
   if (square.isWater)
@@ -464,7 +447,7 @@ bool operator!=(const Location &a, const Location &b) {
   return a.row != b.row || a.col != b.col;
 }
 
-ostream& operator<<(std::ostream &os, const Location &loc) {
+ostream& operator<<(ostream &os, const Location &loc) {
   return os << "(" << (int)loc.row << "," << (int)loc.col << ")";
 }
 
