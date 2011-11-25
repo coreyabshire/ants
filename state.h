@@ -27,9 +27,11 @@ const char CDIRECTIONS[4] = {'N', 'E', 'S', 'W'};
 const int DIRECTIONS[4][2] = { {-1, 0}, {0, 1}, {1, 0}, {0, -1} }; //{N, E, S, W}
 const int NORTH = 0, EAST = 1, SOUTH = 2, WEST = 3;
 
-enum { LAND, FOOD, TARGET, UNKNOWN, ENEMY };
-const int kFactors = 5;
-const float weights[kFactors] = {0.0, 1.0, 1.9, 0.2, 0.0};
+enum { VISIBLE, LAND, FOOD, TARGET, UNKNOWN, ENEMY };
+const int kFactors = 6;
+const float weights[kFactors] = {0.0, 0.0, 1.0, 1.9, 0.2, 0.0};
+const float decay[kFactors] = {0.0, 1.0, 0.97, 0.97, 0.97, 0.0};
+const float loss[kFactors] = {0.9, 1.0, 1.0, 1.0, 1.0, 1.0};
 
 // A square in the grid.
 class Square {
@@ -38,8 +40,7 @@ class Square {
   bool isLefty, isStraight;
   int direction;
   int ant, hillPlayer, hillPlayer2, lastSeen;
-  double foodScent;
-  float inf[kFactors];
+  vector<float> inf;
   vector<int> deadAnts;
 
   Square();
@@ -73,18 +74,43 @@ struct Offset {
 bool operator<(const Offset &a, const Offset &b);
 ostream& operator<<(ostream& os, const Offset &o);
 
+class Sim {
+ public:
+  Sim() {};
+  virtual void makeMove(const Location &a, int d);
+  virtual void go();
+};
+
+inline int addWrap(int a, int b, int max) {
+  return (a + b + max) % max;
+}
+
+inline int diffWrap(int a, int b, int w) {
+  int d = abs(a - b);
+  return min(d, w - d);
+}
+
+inline int absdiff(int a, int b) {
+  return a > b ? a - b : b - a;
+}
+
 // store current state information
 class State {
  public:
   int rows, cols, turn, turns, noPlayers;
-  unsigned short int nSquares, nUnknown, nSeen, nVisible;
-  double attackradius, spawnradius, viewradius;
-  short int attackradius2, spawnradius2, viewradius2;
-  vector<Offset> offsets;
+  int attackradius2, spawnradius2, viewradius2;
   double loadtime, turntime;
+  
+  int nSquares, nUnknown, nSeen, nVisible;
+  double attackradius, spawnradius, viewradius;
+  vector<Offset> offsets;
+  vector<Offset>::iterator offsetSelf, offsetFirst, attackEnd, spawnEnd, viewEnd;
   vector<double> scores;
   bool gameover;
   int64_t seed;
+
+  Sim defaultSim;
+  Sim *sim;
 
   vector< vector<Square> > grid;
   vector< vector<double> > distanceGrid;
@@ -96,6 +122,7 @@ class State {
   Bug bug;
 
   State();
+  State(Sim *sim);
   State(int rows, int cols);
   ~State();
 
@@ -114,7 +141,8 @@ class State {
   vector<int> getDirections(const Location &a, const Location &b);
   void markVisible(const Location& a);
   void calcOffsets(int radius2, vector<Location> &offsets);
-  inline Location addOffset(const Location &a, const Offset &o);
+  Location addOffset(const Location &a, const Offset &o);
+
 
   void updateVisionInformation();
   void updateInfluenceInformation();
@@ -124,9 +152,6 @@ class State {
   Square& operator[](Location a) { return squareAt(a); }
 };
 
-inline int addWrap(int a, int b, int max);
-inline int diffWrap(int a, int b, int max);
-inline Location addOffset(const Location &a, const Offset &o);
 
 ostream& operator<<(ostream &os, const State &state);
 istream& operator>>(istream &is, State &state);

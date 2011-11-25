@@ -1,6 +1,11 @@
 *Bot
 *Test
 Visualizer
+botviz
+botviz2
+visualizer-old
+forktest
+*viz
 *.o
 *.zip
 debug.txt

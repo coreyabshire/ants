@@ -1,1 +1,1 @@
-tools/playgame.py --player_seed 42 --end_wait=0.25 --verbose --log_dir game_logs --turns 4000 --map_file tools/maps/random_walk/random_walk_05p_02.map --fill "$@" "./MyBot" "python tools/sample_bots/python/LeftyBot.py" "./HunterBot" "python tools/sample_bots/python/LeftyBot.py" 
+tools/playgame.py --player_seed 42 --end_key --end_wait=0.25 --verbose --log_dir game_logs --turns 4000 --map_file tools/maps/random_walk/random_walk_05p_02.map --fill "$@" "./MyBot" "python tools/sample_bots/python/LeftyBot.py" "./HunterBot" "python tools/sample_bots/python/LeftyBot.py" 

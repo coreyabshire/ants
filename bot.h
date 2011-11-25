@@ -47,6 +47,7 @@ class Bot {
  public:
   State state;
   Bot();
+  Bot(Sim *sim) : state(sim) {};
   Bot(int rows, int cols);
   void playGame();   //plays a single game of Ants
   void setup();      //set up the bot on initial turn

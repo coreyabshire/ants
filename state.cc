@@ -1,12 +1,10 @@
 #include "state.h"
 
-Square::Square() {
+Square::Square() : inf(kFactors, 0.0) {
   isVisible = isWater = isHill = isFood = isKnown = 0;
   isLefty = 0;
   isFood2 = isHill2 = 0;
-  foodScent = 0.0;
-  for (int i = 0; i < kFactors; i++)
-    inf[i] = 0.0;
+  inf[LAND] = 1.0;
   direction = -1;
   ant = hillPlayer = hillPlayer2 = -1;
 }
@@ -14,8 +12,8 @@ Square::Square() {
 //resets the information for the square except water information
 void Square::reset() {
   isVisible = isHill2 = isFood2 = 0;
-  foodScent = 0.0;
   ant = hillPlayer2 = -1;
+  inf[VISIBLE] *= loss[VISIBLE];
   deadAnts.clear();
 }
 
@@ -25,6 +23,7 @@ void Square::markVisible(int turn) {
   isHill = isHill2;
   hillPlayer = hillPlayer2;
   lastSeen = turn;
+  inf[VISIBLE] = 1.0;
 }
 
 float Square::influence() {
@@ -38,6 +37,11 @@ float Square::influence() {
 // constructor
 State::State() : gameover(0), turn(0) {
   bug.open("./debug.txt");
+  sim = &defaultSim;
+}
+
+State::State(Sim *sim) : gameover(0), turn(0), sim(sim) {
+  bug.open("./debug.txt");
 }
 
 // deconstructor
@@ -47,6 +51,7 @@ State::~State() {
 
 State::State(int rows, int cols) : gameover(0), turn(0), rows(rows), cols(cols) {
   bug.open("./debug.txt");
+  sim = &defaultSim;
   setup();
 }    
 
@@ -82,6 +87,17 @@ void State::setup() {
   bug << "sorting offsets" << endl;
   sort(offsets.begin(), offsets.end());
 
+  bug << "saving key offsets" << endl;
+  vector<Offset>::iterator offset = offsets.begin();
+  offsetSelf = offset++;
+  offsetFirst = offset++;
+  for (; (offset < offsets.end()) && (*offset).d2 <= spawnradius2; offset++);
+  spawnEnd = offset;
+  for (; (offset < offsets.end()) && (*offset).d2 <= attackradius2; offset++);
+  attackEnd = offset;
+  for (; (offset < offsets.end()) && (*offset).d2 <= viewradius2; offset++);
+  viewEnd = offset;
+
   bug << "initial influence dump" << endl;
   dumpInfluenceInformation();
 }
@@ -99,30 +115,25 @@ void State::reset() {
       grid[row][col].reset();
 }
 
+void Sim::makeMove(const Location &loc, int d) {
+  cout << "o " << (int) loc.row << " " << (int) loc.col << " " << CDIRECTIONS[d] << endl;
+}
+
+void Sim::go() {
+  cout << "go" << endl;
+}
+
 // outputs move information to the engine
 void State::makeMove(const Location &loc, int d) {
-  cout << "o " << (int) loc.row << " " << (int) loc.col << " " << CDIRECTIONS[d] << endl;
-
+  //cout << "o " << (int) loc.row << " " << (int) loc.col << " " << CDIRECTIONS[d] << endl;
+  sim->makeMove(loc, d);
   Location nLoc = getLocation(loc, d);
   grid[nLoc.row][nLoc.col].ant = grid[loc.row][loc.col].ant;
   grid[loc.row][loc.col].ant = -1;
 }
 
-inline int addWrap(int a, int b, int max) {
-  return (a + b + max) % max;
-}
-
-inline int diffWrap(int a, int b, int w) {
-  int d = abs(a - b);
-  return min(d, w - d);
-}
-
-inline Location State::addOffset(const Location &a, const Offset &o) {
+Location State::addOffset(const Location &a, const Offset &o){
   return Location(addWrap(a.row, o.r, rows), addWrap(a.col, o.c, cols));
-}
-
-inline int absdiff(int a, int b) {
-  return a > b ? a - b : b - a;
 }
 
 // returns the euclidean distance between two locations with the edges wrapped
@@ -207,18 +218,19 @@ void State::markVisible(const Location& a) {
 // This function will update the lastSeen value for any squares currently
 // visible by one of your live ants.
 void State::updateVisionInformation() {
-  for (vector<Location>::iterator p = myAnts.begin(); p != myAnts.end(); p++)
-    for (vector<Offset>::iterator o = offsets.begin(); (*o).d2 <= viewradius2; o++)
-      markVisible(addOffset(*p, *o));
+  for (vector<Location>::iterator a = myAnts.begin(); a != myAnts.end(); a++)
+    for (vector<Offset>::iterator o = offsetSelf; o != viewEnd; o++)
+      markVisible(addOffset(*a, *o));
 }
 
 void State::updateInfluenceInformation() {
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 42; i++) {
     vector< vector< vector<float> > > temp(rows, vector< vector<float> >(cols, vector<float>(kFactors, 0.0)));
     for (int r = 0; r < rows; r++) {
       for (int c = 0; c < cols; c++) {
         Location a(r,c);
         Square &as = grid[a.row][a.col];
+        temp[r][c][VISIBLE] = as.inf[VISIBLE];
         if (as.isWater) {
           for (int f = 0; f < kFactors; f++) {
             temp[r][c][f] = 0.0;
@@ -242,7 +254,7 @@ void State::updateInfluenceInformation() {
             Location b = getLocation(a, d);
             Square &bs = grid[b.row][b.col];
             for (int f = 0; f < kFactors; f++) {
-              float g = bs.inf[f] * 0.97;
+              float g = bs.inf[f] * decay[f];
               if (g > temp[r][c][f]) {
                 temp[r][c][f] = g;
               }
@@ -263,11 +275,14 @@ void State::updateInfluenceInformation() {
 }
 
 void State::dumpInfluenceInformation() {
+  return;
+  // dump header
   if (turn == 0) {
     bug << "inf rows " << rows << endl;
     bug << "inf cols " << cols << endl;
     bug << "inf factors " << kFactors + 1 << endl;
   }
+  // dump factors
   bug << "inf turn " << turn << endl;
   for (int f = 0; f < kFactors; f++) {
     bug << "inf factor " << f << endl;
@@ -279,6 +294,7 @@ void State::dumpInfluenceInformation() {
       bug << endl;
     }
   }
+  // dump summary factor
   bug << "inf factor " << kFactors << endl;
   float weight = 0.0;
   for (int f = 0; f < kFactors; f++) {
@@ -296,24 +312,23 @@ void State::dumpInfluenceInformation() {
 // This is the output function for a state. It will add a char map
 // representation of the state to the output stream passed to it.
 ostream& operator<<(ostream &os, const State &state) {
-  for(int row=0; row<state.rows; row++) {
-    for(int col=0; col<state.cols; col++) {
-      if(state.grid[row][col].isWater)
+  for (int row = 0; row < state.rows; row++) {
+    for (int col = 0; col < state.cols; col++) {
+      if (state.grid[row][col].isWater)
         os << '%';
-      else if(state.grid[row][col].isFood)
+      else if (state.grid[row][col].isFood)
         os << '*';
-      else if(state.grid[row][col].isHill)
+      else if (state.grid[row][col].isHill)
         os << (char)('A' + state.grid[row][col].hillPlayer);
-      else if(state.grid[row][col].ant >= 0)
+      else if (state.grid[row][col].ant >= 0)
         os << (char)('a' + state.grid[row][col].ant);
-      else if(state.grid[row][col].isVisible)
+      else if (state.grid[row][col].isVisible)
         os << '.';
       else
         os << '?';
     }
     os << endl;
   }
-
   return os;
 }
 
@@ -377,6 +392,7 @@ istream& operator>>(istream &is, State &state) {
     while(is >> inputType) {
       if(inputType == "w") { //water square
         is >> row >> col;
+        state.grid[row][col].inf[LAND] = 0.0;
         state.grid[row][col].isWater = 1;
       }
       else if(inputType == "f") { //food square
@@ -425,7 +441,6 @@ istream& operator>>(istream &is, State &state) {
       }
     }
   }
-
   return is;
 }
 

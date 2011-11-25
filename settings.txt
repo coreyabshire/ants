@@ -1,0 +1,7 @@
+turntime 1000
+spawnradius2 1
+viewradius2 77
+loadtime 3000
+turns 1000
+attackradius2 5
+players 4

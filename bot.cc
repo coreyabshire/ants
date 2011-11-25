@@ -23,7 +23,7 @@ void Bot::playGame() {
     makeMoves();
     endTurn();
   }
-};
+}
 
 void Bot::setup() {
   // determine all currently unseen tiles
@@ -37,7 +37,8 @@ void Bot::endTurn() {
   if(state.turn > 0)
     state.reset();
   state.turn++;
-  cout << "go" << endl;
+  //cout << "go" << endl;
+  state.sim->go();
 }
 
 bool Bot::doMoveDirection(const Location &a, int d) {
@@ -302,7 +303,6 @@ void Bot::makeMoves() {
       used[a.row][a.col] = true;
     }
   }
-
   state.bug << "time taken: " << state.timer.getTime() << "ms" << endl << endl;
 }
 
