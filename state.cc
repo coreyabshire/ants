@@ -2,6 +2,7 @@
 
 Square::Square() : inf(kFactors, 0.0) {
   isVisible = isWater = isHill = isFood = isKnown = 0;
+  good = goodmove = bad = badmove = 0;
   isLefty = 0;
   isFood2 = isHill2 = 0;
   inf[LAND] = 1.0;
@@ -12,6 +13,7 @@ Square::Square() : inf(kFactors, 0.0) {
 //resets the information for the square except water information
 void Square::reset() {
   isVisible = isHill2 = isFood2 = 0;
+  good = goodmove = bad = badmove = 0;
   ant = hillPlayer2 = -1;
   inf[VISIBLE] *= loss[VISIBLE];
   deadAnts.clear();
@@ -218,9 +220,22 @@ void State::markVisible(const Location& a) {
 // This function will update the lastSeen value for any squares currently
 // visible by one of your live ants.
 void State::updateVisionInformation() {
-  for (vector<Location>::iterator a = myAnts.begin(); a != myAnts.end(); a++)
-    for (vector<Offset>::iterator o = offsetSelf; o != viewEnd; o++)
+  bug << "updating vision " << turn << endl;
+  for (vector<Location>::iterator a = myAnts.begin(); a != myAnts.end(); a++) {
+    for (vector<Offset>::iterator o = offsetSelf; o != viewEnd; o++) {
       markVisible(addOffset(*a, *o));
+    }
+    for (vector<Offset>::iterator o = offsetSelf; o != attackEnd; o++) {
+      Location b = addOffset(*a, *o);
+      grid[b.row][b.col].good++;
+    }
+  }
+  for (vector<Location>::iterator a = enemyAnts.begin(); a != enemyAnts.end(); a++) {
+    for (vector<Offset>::iterator o = offsetSelf; o != attackEnd; o++) {
+      Location b = addOffset(*a, *o);
+      grid[b.row][b.col].bad++;
+    }
+  }
 }
 
 void State::updateInfluenceInformation() {
@@ -249,6 +264,9 @@ void State::updateInfluenceInformation() {
           if (as.ant == 0) {
             temp[r][c][FOOD] *= 0.5;
             temp[r][c][UNKNOWN] *= 0.7;
+          }
+          if (as.ant > 0) {
+            temp[r][c][ENEMY] *= 1.0;
           }
           for (int d = 0; d < TDIRECTIONS; d++) {
             Location b = getLocation(a, d);

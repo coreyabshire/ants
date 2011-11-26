@@ -111,8 +111,7 @@ void Bot::removeIf(set<Location> &locs, bool(*pred)(Square &)) {
       ++p;
 }
 
-void Bot::updateMemory(set<Location> &memory, vector<Location> &seen,
-                       bool(*pred)(Square &)) {
+void Bot::updateMemory(set<Location> &memory, vector<Location> &seen, bool(*pred)(Square &)) {
   insertAll(memory, seen);
   removeIf(memory, pred);
 }
@@ -138,7 +137,8 @@ void Bot::search(set<Location> &sources, set<Location> &targets, list<Route> &ro
       }
       for (int d = 0; d < TDIRECTIONS; d++) {
         Location v = state.getLocation(u, d);
-        if (!state.grid[v.row][v.col].isWater) {
+        Square &vs = state.grid[v.row][v.col];
+        if (!vs.isWater) {
           if (!expanded.count(v)) {
             int distance = search.distances[u] + 1;
             expanded.insert(v);
@@ -286,7 +286,7 @@ void Bot::makeMoves() {
     for (int d = 0; d < TDIRECTIONS; d++) {
       Location b = state.getLocation(a, d);
       Square &bs = state.grid[b.row][b.col];
-      if (!used[b.row][b.col]) {
+      if (bs.ant == -1 && !used[b.row][b.col] && bs.bad == 0) {
         float f = bs.influence();
         if (f > bestf) {
           bestd = d;
@@ -296,8 +296,11 @@ void Bot::makeMoves() {
     }
     if (bestd != -1) {
       Location b = state.getLocation(a, bestd);
-      state.makeMove(a, bestd);
-      used[b.row][b.col] = true;
+      Square &bs = state.grid[b.row][b.col];
+      if (!used[b.row][b.col]) {
+        state.makeMove(a, bestd);
+        used[b.row][b.col] = true;
+      }
     }
     else {
       used[a.row][a.col] = true;
@@ -350,9 +353,9 @@ void Bot::oldMakeMoves() {
             << state.nSeen << " "
             << state.nUnknown << " "
             << state.nSquares << " "
-            << ((double)state.nVisible / (double)state.nSquares) << " "
-            << ((double)state.nSeen / (double)state.nSquares) << " " 
-            << ((double)state.nUnknown / (double)state.nSquares) << endl;
+            << ((double) state.nVisible / (double)state.nSquares) << " "
+            << ((double)    state.nSeen / (double)state.nSquares) << " " 
+            << ((double) state.nUnknown / (double)state.nSquares) << endl;
   state.bug << "time taken: "
             << state.turn << " " 
             << state.myAnts.size() << " " 

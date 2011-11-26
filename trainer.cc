@@ -2,7 +2,6 @@
 #include <fstream>
 #include <vector>
 #include <cmath>
-#include <limits>
 #include "visualizer.h"
 #include "state.h"
 #include "bot.h"
@@ -27,14 +26,23 @@ class GameMap {
   int load(string filename);
 };
 
+class GameSquare {
+ public:
+  bool isWater, isFood, isDead;
+  int ant, enemies, good, bad;
+  GameSquare() : isWater(false), isFood(false), isDead(false),
+                 ant(-1), enemies(0), good(0), bad(0) {};
+};
+
 class Game {
  public:
   int rows, cols, players;
   int turns, player_seed;
   int attackradius2, spawnradius2, viewradius2;
   double loadtime, turntime;
+  bool needEndTurn;
 
-  vector< vector<Square> > grid;
+  vector< vector<GameSquare> > grid;
   MySim sim;
 
   Game(const GameMap &gamemap);
@@ -44,21 +52,77 @@ class Game {
   void receive(Bot& bot);
 
   void update();
+  void attack();
   void gather();
+  void endTurn();
 
   void mouse(int button, int state, int r, int c);
+  void keyboard(unsigned char key, int r, int c);
   void display();
 };
 
-int factor1 = 0;
-int factor2 = 0;
-int factor3 = 0;
-
 void MySim::makeMove(const Location &a, int d) {
-  vector< vector<Square> > &realgrid = game->grid;
+  vector< vector<GameSquare> > &grid = game->grid;
   Location b = bot.state.getLocation(a, d);
-  realgrid[a.row][a.col].ant = -1;
-  realgrid[b.row][b.col].ant = 0;
+  grid[a.row][a.col].ant = -1;
+  grid[b.row][b.col].ant = 0;
+}
+
+void Game::attack() {
+  // reset
+  for (int r = 0; r < rows; r++) {
+    for (int c = 0; c < cols; c++) {
+      grid[r][c].enemies = 0;
+      grid[r][c].isDead = false;
+    }
+  }
+  // count enemies
+  for (int r = 0; r < rows; r++) {
+    for (int c = 0; c < cols; c++) {
+      if (grid[r][c].ant >= 0) {
+        Location a(r, c);
+        int aa = grid[r][c].ant;
+        for (vector<Offset>::iterator o = sim.bot.state.offsetFirst; o != sim.bot.state.attackEnd; o++) {
+          Location b = sim.bot.state.addOffset(a, *o);
+          int ba = grid[b.row][b.col].ant;
+          if (ba >= 0 && ba != aa) {
+            grid[r][c].enemies++;
+          }
+        }
+      }
+    }
+  }
+  // check dead
+  for (int r = 0; r < rows; r++) {
+    for (int c = 0; c < cols; c++) {
+      if (grid[r][c].ant >= 0) {
+        Location a(r, c);
+        int aa = grid[r][c].ant;
+        int ae = grid[r][c].enemies;
+        for (vector<Offset>::iterator o = sim.bot.state.offsetFirst; o != sim.bot.state.attackEnd; o++) {
+          Location b = sim.bot.state.addOffset(a, *o);
+          int ba = grid[b.row][b.col].ant;
+          int be = grid[b.row][b.col].enemies;
+          if (ba >= 0 && ba != aa && ae >= be) {
+            cout << "death " << aa << " " << ae << " " << ba << " " << be << endl;
+            grid[r][c].isDead = true;
+            break;
+          }
+        }
+      }
+    }
+  }
+  // remove dead
+  for (int r = 0; r < rows; r++) {
+    for (int c = 0; c < cols; c++) {
+      if (grid[r][c].ant >= 0) {
+        if (grid[r][c].isDead) {
+          grid[r][c].ant = -1;
+          grid[r][c].isDead = false;
+        }
+      }
+    }
+  }
 }
 
 void Game::gather() {
@@ -78,18 +142,51 @@ void Game::gather() {
   }
 }
 
+void Game::endTurn() {
+  sim.bot.endTurn();
+  needEndTurn = false;
+}
+
 void Game::receive(Bot &bot) {
   bot.state.updateVisionInformation();
   bot.state.updateInfluenceInformation();
   //  cout << "making moves" << endl;
   bot.makeMoves();
-  bot.endTurn();
 }
 
 void Game::update() {
+  if (needEndTurn)
+    endTurn();
+
   send(sim.bot);
   receive(sim.bot);
+
+  for (int r = 0; r < rows; r++) {
+    for (int c = 0; c < cols; c++) {
+      grid[r][c].good = 0;
+      grid[r][c].bad = 0;
+    }
+  }
+  for (int r = 0; r < rows; r++) {
+    for (int c = 0; c < cols; c++) {
+      if (grid[r][c].ant >= 0) {
+        Location a(r, c);
+        GameSquare &as = grid[r][c];
+        for (vector<Offset>::iterator o = sim.bot.state.offsetFirst; o != sim.bot.state.attackEnd; o++) {
+          Location b = sim.bot.state.addOffset(a, *o);
+          GameSquare &bs = grid[b.row][b.col];
+          if (as.ant == 0)
+            ++bs.good;
+          else
+            ++bs.bad;
+        }
+      }
+    }
+  }
+
+  attack();
   gather();
+  needEndTurn = true;
 }
 
 void MySim::go() {
@@ -102,14 +199,6 @@ void tile(float x, float y, float r, float g, float b) {
   glVertex3f(x + 1.0, y, 0.0);
   glVertex3f(x + 1.0, y + 1.0, 0.0);
   glVertex3f(x, y + 1.0, 0.0);
-  glEnd();
-}
-
-void line(const Location &a, const Location &b) {
-  glColor3f(1.0, 0.0, 0.0);
-  glBegin(GL_LINES);
-  glVertex3f(a.col + 0.5, a.row + 0.5, 0.0);
-  glVertex3f(b.col + 0.5, b.row + 0.5, 0.0);
   glEnd();
 }
 
@@ -134,6 +223,11 @@ void Game::send(Bot &bot) {
         bot.state.grid[r][c].ant = 0;
         bot.state.myAnts.push_back(Location(r, c));
       }
+      if (grid[r][c].ant > 0) {
+        //    cout << "ant at " << r << "," << c << endl;
+        bot.state.grid[r][c].ant = grid[r][c].ant;
+        bot.state.enemyAnts.push_back(Location(r, c));
+      }
     }
   }
 }
@@ -144,16 +238,16 @@ void Game::mouse(int button, int mstate, int r, int c) {
   }
   State& state = sim.bot.state;
   if (r < rows && c < cols) {
-    Square &s = grid[r][c];
+    GameSquare &s = grid[r][c];
     switch (button) {
       case GLUT_LEFT_BUTTON:
-        s.isFood = !s.isFood;
+        s.ant = s.ant == 0 ? -1 : s.ant == -1 ? 0 : s.ant;
         break;
       case GLUT_MIDDLE_BUTTON:
-        s.ant = s.ant == 1 ? -1 : s.ant == -1 ? 1 : s.ant;
+        s.isFood = !s.isFood;
         break;
       case GLUT_RIGHT_BUTTON:
-        s.ant = s.ant == 0 ? -1 : s.ant == -1 ? 0 : s.ant;
+        s.ant = s.ant == 1 ? -1 : s.ant == -1 ? 1 : s.ant;
         break;
     }
   }
@@ -163,24 +257,26 @@ void Game::display() {
   State &state = sim.bot.state;
   for (int r = 0; r < rows; r++) {
     for (int c = 0; c < cols; c++) {
-      Square &s = grid[r][c];
+      GameSquare &s = grid[r][c];
       float f0 = 0.0, f1 = 0.0, f2 = 0.0;
       if (s.isWater)
         tile(c, r, 0.0, 0.0, 0.0);
       else if (s.ant == 0)
         tile(c, r, 0.0, 1.0, 0.0);
+      else if (s.ant == 1)
+        tile(c, r, 1.0, 0.0, 0.0);
       else if (s.isFood)
         tile(c, r, 0.0, 0.0, 1.0);
       else {
         float f1 = state.grid[r][c].inf[UNKNOWN];
         float f2 = state.grid[r][c].inf[VISIBLE];
         float f3 = state.grid[r][c].inf[FOOD];
-        tile(c, r, f1 * 0.4, 0.2 *f2 + 0.1 , f3 * 1.0);
+        float fg = (float) state.grid[r][c].good * 0.2;
+        float fb = (float) state.grid[r][c].bad * 0.2;
+        tile(c, r, f1 * 0.2 + fb, 0.2 * f2 + 0.1 + fg, f3 * 1.0);
       }
     }
   }
-  Location a(0,0), b(1,1);
-  line(a, b);
 }
 
 int GameMap::load(string filename) {
@@ -205,9 +301,6 @@ int GameMap::load(string filename) {
       file >> line;
       lines.push_back(line);
     }
-    else if (type == "#") {
-      file.ignore(numeric_limits<int>::max(), '\n');
-    }
     else {
       cout << "unrecognized: " << type << endl;
     }
@@ -227,7 +320,8 @@ Game::Game(const GameMap &m) : sim(this) {
   turntime = 1000;
   turns = 1000;
   loadtime = 3000;
-  grid = vector< vector<Square> >(rows, vector<Square>(cols, Square()));
+  needEndTurn = false;
+  grid = vector< vector<GameSquare> >(rows, vector<GameSquare>(cols, GameSquare()));
   for (int r = 0; r < rows; r++) {
     for (int c = 0; c < cols; c++) {
       grid[r][c].isWater = m.lines[r][c] == '%';
@@ -255,8 +349,12 @@ void Game::setup(Bot &bot) {
 
 bool running = true;
 const int kMult = 5;
-const unsigned int kDelay = 1000/30;
+const unsigned int kDelay = 1000/10;
 Game *game;
+
+void idle() {
+  glutPostRedisplay();
+}
 
 void timer(int value) {
   game->update();
@@ -265,34 +363,14 @@ void timer(int value) {
     glutTimerFunc(kDelay, timer, value);
 }
 
-void keyboard(unsigned char k, int x, int y) {
-  switch (k) {
+void Game::keyboard(unsigned char key, int r, int c) {
+  GameSquare &s = grid[r][c];
+  switch (key) {
     case 27:
       exit(0);
       break;
-    case 's':
-      if (factor1 < kFactors - 1)
-        ++factor1;
-      break;
-    case 'x':
-      if (factor1 > 0)
-        --factor1;
-      break;
-    case 'd':
-      if (factor2 < kFactors - 1)
-        ++factor2;
-      break;
-    case 'c':
-      if (factor2 > 0)
-        --factor2;
-      break;
     case 'f':
-      if (factor3 < kFactors - 1)
-        ++factor3;
-      break;
-    case 'v':
-      if (factor3 > 0)
-        --factor3;
+      s.isFood = !s.isFood;
       break;
     case '\t':
       game->update();
@@ -304,10 +382,13 @@ void keyboard(unsigned char k, int x, int y) {
         glutTimerFunc(kDelay, timer, 0);
       break;
     default:
-      cout << "keyboard " << k << " " << x << " " << y << endl;
+      cout << "keyboard " << key << " " << c << " " << r << endl;
       break;
   }
-  cout << " factors " << factor1 << ", " << factor2 << ", " << factor3 << endl;
+}
+
+void keyboard(unsigned char key, int x, int y) {
+  game->keyboard(key, y/kMult, x/kMult);
   glutPostRedisplay();
 }
 
@@ -351,6 +432,7 @@ int main(int argc, char **argv) {
   glutTimerFunc(kDelay, timer, 0);
   glutMouseFunc(mouse);
   glutKeyboardFunc(keyboard);
+  glutIdleFunc(idle);
   glutMainLoop();
 
   return 0;

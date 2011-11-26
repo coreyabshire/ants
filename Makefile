@@ -1,10 +1,10 @@
 CC=g++
 CFLAGS=-O3 -funroll-loops -c
-LDFLAGS=-O2 -lm
-SOURCES=MyBot.cc bot.cc state.cc
+LDFLAGS=-O2 -lm -lGL -lGLU -lglut
+SOURCES=VizBot.cc bot.cc state.cc
 HEADERS=bot.h state.h
 OBJECTS=$(addsuffix .o, $(basename ${SOURCES}))
-EXECUTABLE=XMyBot
+EXECUTABLE=MyBot
 
 TESTLDFLAGS=-O2 -lm -lgtest -lpthread
 TESTSOURCES=unittest.cc bot.cc state.cc
@@ -12,9 +12,9 @@ TESTOBJECTS=$(addsuffix .o, $(basename ${TESTSOURCES}))
 TESTEXECUTABLE=UnitTest
 
 VIZLDFLAGS=-O2 -lm -lGL -lGLU -lglut
-VIZSOURCES=VizBot.cc bot.cc state.cc
+VIZSOURCES=botviz2.cc bot.cc state.cc
 VIZOBJECTS=$(addsuffix .o, $(basename ${VIZSOURCES}))
-VIZEXECUTABLE=MyBot
+VIZEXECUTABLE=botviz2
 
 #Uncomment the following to enable debugging
 #CFLAGS+=-g -DDEBUG
@@ -30,7 +30,7 @@ zip:
 	zip MyBot *.h $(SOURCES)
 
 $(EXECUTABLE): $(OBJECTS)
-	$(CC) $(LDFLAGS) $(OBJECTS) -o $@
+	$(CC) $(OBJECTS) -o $@ $(LDFLAGS)
 
 $(TESTEXECUTABLE): $(TESTOBJECTS)
 	$(CC) $(TESTOBJECTS) -o $@ $(TESTLDFLAGS) 

@@ -40,6 +40,7 @@ class Square {
   bool isLefty, isStraight;
   int direction;
   int ant, hillPlayer, hillPlayer2, lastSeen;
+  int good, goodmove, bad, badmove;
   vector<float> inf;
   vector<int> deadAnts;
 
