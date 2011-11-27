@@ -15,7 +15,6 @@ void Bot::playGame() {
   state.setup();
   setup();
   endTurn();
-
   // continues making moves while the game is not over
   while (cin >> state) {
     state.updateVisionInformation();
@@ -50,7 +49,7 @@ bool Bot::doMoveDirection(const Location &a, int d) {
     square.direction = d;
     return true;
   }
-  else {
+ else {
     return false;
   }
 }
@@ -271,12 +270,62 @@ int Bot::numAttackAnts(int totalAnts) {
   return min((double)totalAnts / 4.0, 7.0);
 }
 
-//makes the bots moves for the turn
 void Bot::makeMoves() {
   state.bug << "turn " << state.turn << ":" << endl;
   state.bug << state << endl;
+  deque<Location> ants(state.myAnts.begin(), state.myAnts.end());
+  vector< vector<bool> > used(state.rows, vector<bool>(state.cols, false));
+  int remaining, moved;
+  // picks out moves for each ant
+  do {
+    remaining = ants.size();
+    moved = 0;
+    while (!ants.empty() && remaining-- > 0) {
+      Location a = ants.front();
+      ants.pop_front();
+      Square &as = state.grid[a.row][a.row];
+      int bestd = -1;
+      float bestf = 0.0;//as.influence();
+      for (int d = 0; d < TDIRECTIONS; d++) {
+        Location b = state.getLocation(a, d);
+        Square &bs = state.grid[b.row][b.col];
+        if (!used[b.row][b.col] && bs.good > bs.bad) {
+          float f = bs.influence();
+          if (f > bestf) {
+            bestd = d;
+            bestf = f;
+          }
+        }
+      }
+      if (bestd != -1) {
+        Location b = state.getLocation(a, bestd);
+        Square &bs = state.grid[b.row][b.col];
+        if (!used[b.row][b.col]) {
+          if (bs.ant != 0) {
+            state.makeMove(a, bestd);
+            used[b.row][b.col] = true;
+            moved++;
+          }
+          else {
+            ants.push_back(a);
+            state.bug << "move occupied " << state.turn << " " << b << "  " << a << endl;
+          }
+        }
+      }
+      else {
+        used[a.row][a.col] = true;
+        moved++;
+      }
+    }
+  } while (moved > 0);
+  state.bug << "time taken: " << state.turn << " " << state.timer.getTime() << "ms" << endl << endl;
+}
 
-  //picks out moves for each ant
+// Makes the bots moves for the turn
+void Bot::makeMovesVector() {
+  state.bug << "turn " << state.turn << ":" << endl;
+  state.bug << state << endl;
+  // picks out moves for each ant
   vector< vector<bool> > used(state.rows, vector<bool>(state.cols, false));
   for (int ant = 0; ant < (int)state.myAnts.size(); ant++) {
     Location a = state.myAnts[ant];

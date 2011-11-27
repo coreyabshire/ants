@@ -36,8 +36,7 @@ class GameSquare {
 
 class Game {
  public:
-  int rows, cols, players;
-  int turns, player_seed;
+  int rows, cols, players, turns, player_seed;
   int attackradius2, spawnradius2, viewradius2;
   double loadtime, turntime;
   bool needEndTurn;
