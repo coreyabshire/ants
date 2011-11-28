@@ -47,11 +47,11 @@ TEST(State, Sizes) {
   State state(200, 200);
   Location a(0, 0);
   EXPECT_EQ(8, sizeof a);
-  EXPECT_EQ(96, sizeof state.grid[0][0]);
+  EXPECT_EQ(104, sizeof state.grid[0][0]);
   EXPECT_EQ(200, state.grid.size());
   EXPECT_EQ(40000, state.grid.size() * state.grid[0].size());
-  EXPECT_EQ(3840000, state.rows * state.cols * sizeof state.grid[0][0]);
-  EXPECT_EQ(944, sizeof state);
+  EXPECT_EQ(4160000, state.rows * state.cols * sizeof state.grid[0][0]);
+  EXPECT_EQ(952, sizeof state);
 }
 
 TEST(State, Distance) {

@@ -25,7 +25,7 @@ vector<int> foodCounts;
 vector< list<Route> > routes;
 vector<double> turnTimes;
 bool needEndTurn = false;
-bool factor[kFactors] = { 0, 0, 1, 1, 1, 0 };
+bool factor[kFactors] = { 0, 0, 1, 1, 1, 1 };
 int factorsOn = 0;
 float weight = 0.0;
 bool weightOn = false;

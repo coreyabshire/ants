@@ -3,6 +3,8 @@
 Square::Square() : inf(kFactors, 0.0) {
   isVisible = isWater = isHill = isFood = isKnown = 0;
   good = goodmove = bad = badmove = 0;
+  isUsed = 0;
+  id = -1;
   isLefty = 0;
   isFood2 = isHill2 = 0;
   inf[LAND] = 1.0;
@@ -14,6 +16,7 @@ Square::Square() : inf(kFactors, 0.0) {
 void Square::reset() {
   isVisible = isHill2 = isFood2 = 0;
   good = goodmove = bad = badmove = 0;
+  isUsed = 0;
   ant = hillPlayer2 = -1;
   inf[VISIBLE] *= loss[VISIBLE];
   deadAnts.clear();
@@ -37,12 +40,12 @@ float Square::influence() {
 }
 
 // constructor
-State::State() : gameover(0), turn(0) {
+State::State() : gameover(0), turn(0), nextId(0) {
   bug.open("./debug.txt");
   sim = &defaultSim;
 }
 
-State::State(Sim *sim) : gameover(0), turn(0), sim(sim) {
+State::State(Sim *sim) : gameover(0), turn(0), nextId(0), sim(sim) {
   bug.open("./debug.txt");
 }
 
@@ -51,7 +54,7 @@ State::~State() {
   bug.close();
 }
 
-State::State(int rows, int cols) : gameover(0), turn(0), rows(rows), cols(cols) {
+State::State(int rows, int cols) : gameover(0), turn(0), rows(rows), cols(cols), nextId(0) {
   bug.open("./debug.txt");
   sim = &defaultSim;
   setup();
@@ -131,8 +134,30 @@ void State::makeMove(const Location &loc, int d) {
   sim->makeMove(loc, d);
   Location nLoc = getLocation(loc, d);
   grid[nLoc.row][nLoc.col].ant = grid[loc.row][loc.col].ant;
+  grid[nLoc.row][nLoc.col].id = grid[loc.row][loc.col].id;
+  grid[nLoc.row][nLoc.col].isUsed = 1;
   grid[loc.row][loc.col].ant = -1;
+  grid[loc.row][loc.col].id = -1;
 }
+
+// void State::updateEnemyCounts() {
+//   for (int r = 0; r < rows; r++) {
+//     for (int c = 0; c < cols; c++) {
+//       Square &as = grid[r][c];
+//       if (as.ant >= 0) {
+//         int enemies = 0;
+//         for (vector<Offset>::iterator o = offsetFirst; o != attackEnd; o++) {
+//           Square &bs = grid[(*o).r][(*o.c)];
+//           if (bs.ant >= 0 && as.ant != bs.ant)
+//             ++enemies;
+//         }
+//       }
+//     }
+//   }
+// }
+
+// void State::evaluate() {
+// }
 
 Location State::addOffset(const Location &a, const Offset &o){
   return Location(addWrap(a.row, o.r, rows), addWrap(a.col, o.c, cols));
@@ -239,7 +264,7 @@ void State::updateVisionInformation() {
 }
 
 void State::updateInfluenceInformation() {
-  for (int i = 0; i < 42; i++) {
+  for (int i = 0; i < 10; i++) {
     vector< vector< vector<float> > > temp(rows, vector< vector<float> >(cols, vector<float>(kFactors, 0.0)));
     for (int r = 0; r < rows; r++) {
       for (int c = 0; c < cols; c++) {
@@ -266,7 +291,7 @@ void State::updateInfluenceInformation() {
             temp[r][c][UNKNOWN] *= 0.7;
           }
           if (as.ant > 0) {
-            temp[r][c][ENEMY] *= 1.0;
+            temp[r][c][ENEMY] = 1.0;
           }
           for (int d = 0; d < TDIRECTIONS; d++) {
             Location b = getLocation(a, d);
@@ -421,13 +446,19 @@ istream& operator>>(istream &is, State &state) {
       else if(inputType == "a") { //live ant square
         is >> row >> col >> player;
         state.grid[row][col].ant = player;
-        if(player == 0)
+        if(player == 0) {
+          Location a = Location(row, col);
+          Square &as = state.grid[row][col];
           state.myAnts.push_back(Location(row, col));
+        }
         else
           state.enemyAnts.push_back(Location(row, col));
       }
       else if(inputType == "d") { //dead ant square
         is >> row >> col >> player;
+        if (player == 0) {
+          state.grid[row][col].id = -1;
+        }
         state.grid[row][col].deadAnts.push_back(player);
       }
       else if(inputType == "h") {

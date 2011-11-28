@@ -43,6 +43,59 @@ class Fcmp {
   }
 };
 
+class Agent;
+class Bot;
+
+class AgentState {
+ public:
+  virtual ~AgentState() {};
+  virtual void enter(Agent *) = 0;
+  virtual bool execute(Agent *) = 0;
+  virtual void exit(Agent *) = 0;
+};
+
+class Agent {
+ public:
+  int id;
+  int fatigue;
+  Location loc;
+  AgentState *state;
+  Agent(int id, const Location& loc, AgentState *state) : id(id), loc(loc), state(state) {};
+  virtual ~Agent() {};
+  bool update();
+  void change(AgentState *s);
+};
+
+class Lazy : public AgentState {
+ public:
+  Bot *bot;
+  Lazy() {};
+  Lazy(Bot *bot) : bot(bot) {};
+  virtual void enter(Agent *a);
+  virtual bool execute(Agent *a);
+  virtual void exit(Agent *a);
+};
+
+class Active : public AgentState {
+ public:
+  Bot *bot;
+  Active() {};
+  Active(Bot *bot) : bot(bot) {};
+  virtual void enter(Agent *a);
+  virtual bool execute(Agent *a);
+  virtual void exit(Agent *a);
+};
+
+class Defend : public AgentState {
+ public:
+  Bot *bot;
+  Defend() {};
+  Defend(Bot *bot) : bot(bot) {};
+  virtual void enter(Agent *a);
+  virtual bool execute(Agent *a);
+  virtual void exit(Agent *a);
+};
+
 class Bot {
  public:
   State state;
@@ -65,6 +118,13 @@ class Bot {
   map<Location,int> straight;
   map<Location,int> lefty;
   map<Location,Route> routes;
+  vector<Agent> agents;
+
+  Lazy lazy;
+  Active active;
+  Defend defend;
+
+  int bestDirection(const Location &a);
 
   void goLefty(set<Location> &antsUsed);  //makes moves for a single turn
   void goLefty2(set<Location> &antsUsed);  //makes moves for a single turn

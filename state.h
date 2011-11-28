@@ -29,18 +29,20 @@ const int NORTH = 0, EAST = 1, SOUTH = 2, WEST = 3;
 
 enum { VISIBLE, LAND, FOOD, TARGET, UNKNOWN, ENEMY };
 const int kFactors = 6;
-const float weights[kFactors] = {0.0, 0.0, 1.0, 1.9, 0.2, 0.0};
-const float decay[kFactors] = {0.0, 1.0, 0.97, 0.97, 0.97, 0.0};
+const float weights[kFactors] = {0.0, 0.0, 1.0, 1.1, 0.2, 1.0};
+const float decay[kFactors] = {0.0, 1.0, 0.90, 1.90, 0.97, 0.87};
 const float loss[kFactors] = {0.9, 1.0, 1.0, 1.0, 1.0, 1.0};
 
 // A square in the grid.
 class Square {
  public:
   bool isVisible, isWater, isHill, isFood, isKnown, isFood2, isHill2;
-  bool isLefty, isStraight;
+  bool isLefty, isStraight, isUsed;
   int direction;
+  int id;
   int ant, hillPlayer, hillPlayer2, lastSeen;
   int good, goodmove, bad, badmove;
+  int enemies;
   vector<float> inf;
   vector<int> deadAnts;
 
@@ -65,6 +67,19 @@ bool operator<(const Location &a, const Location &b);
 bool operator==(const Location &a, const Location &b);
 bool operator!=(const Location &a, const Location &b);
 ostream& operator<<(ostream &os, const Location &loc);
+
+class Move {
+ public:
+  Location a;
+  Location b;
+  int d;
+};
+
+class Turn {
+ public:
+  vector<Move> moves;
+  vector< vector<bool> > used;
+};
 
 struct Offset {
   double d;
@@ -109,6 +124,7 @@ class State {
   vector<double> scores;
   bool gameover;
   int64_t seed;
+  int nextId;
 
   Sim defaultSim;
   Sim *sim;

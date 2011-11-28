@@ -4,9 +4,77 @@ int dleft[] = { WEST, NORTH, EAST, SOUTH };
 int dright[] = { EAST, SOUTH, WEST, NORTH };
 int dbehind[] = { SOUTH, WEST, NORTH, EAST };
 
+bool Agent::update() {
+  return state->execute(this);
+}
+
+void Agent::change(AgentState *s) {
+  state->exit(this);
+  state = s;
+  state->enter(this);
+}
+
+void Lazy::enter(Agent *a) {
+}
+
+bool Lazy::execute(Agent *a) {
+  if (a->fatigue <= 0) {
+    a->change(&bot->active);
+    return false;
+  }
+  else {
+    a->fatigue -= 2;
+    return true;
+  }
+}
+
+void Lazy::exit(Agent *a) {
+}
+
+void Active::enter(Agent *a) {
+  a->fatigue = 0;
+}
+
+bool Active::execute(Agent *agent) {
+  Location a = agent->loc;
+  int d = bot->bestDirection(a);
+  if (d != -1) {
+    Location b = bot->state.getLocation(a, d);
+    Square &bs = bot->state.grid[b.row][b.col];
+    if (!bs.isUsed) {
+      if (bs.ant != 0) {
+        bot->state.makeMove(a, d);
+        agent->loc = b;
+        agent->fatigue++;
+        return true;
+      }
+      else {
+        return false;
+      }
+    }
+  }
+  else {
+    return true;
+  }
+}
+
+void Active::exit(Agent *a) {
+}
+
+void Defend::enter(Agent *a) {
+}
+
+bool Defend::execute(Agent *a) {
+}
+
+void Defend::exit(Agent *a) {
+}
+
 // constructor
-Bot::Bot() : nextAntId(0) {};
-Bot::Bot(int rows, int cols) : nextAntId(0), state(rows, cols) {};
+Bot::Bot() : nextAntId(0), lazy(this), active(this), defend(this) {};
+
+Bot::Bot(int rows, int cols) : nextAntId(0), state(rows, cols), lazy(this), active(this), defend(this) {
+};
 
 // plays a single game of Ants.
 void Bot::playGame() {
@@ -33,7 +101,7 @@ void Bot::setup() {
 
 // finishes the turn
 void Bot::endTurn() {
-  if(state.turn > 0)
+  if (state.turn > 0)
     state.reset();
   state.turn++;
   //cout << "go" << endl;
@@ -158,7 +226,6 @@ void Bot::search(set<Location> &sources, set<Location> &targets, list<Route> &ro
   }
 }
 
-
 int Bot::search(set<Location> &sources, const Location &target, list<Route> &routes, int maxCount) {
   int count = 0;
   int expansionCount = 0;
@@ -270,51 +337,55 @@ int Bot::numAttackAnts(int totalAnts) {
   return min((double)totalAnts / 4.0, 7.0);
 }
 
+int Bot::bestDirection(const Location &a) {
+  Square &as = state.grid[a.row][a.col];
+  int bestd = -1;
+  float bestf = as.influence();
+  for (int d = 0; d < TDIRECTIONS; d++) {
+    Location b = state.getLocation(a, d);
+    Square &bs = state.grid[b.row][b.col];
+    if (!bs.isUsed && (bs.bad == 0 || bs.good > (bs.bad + 1))) {
+      float f = bs.influence();
+      if (f > bestf) {
+        bestd = d;
+        bestf = f;
+      }
+    }
+  }
+  return bestd;
+}
+
 void Bot::makeMoves() {
   state.bug << "turn " << state.turn << ":" << endl;
   state.bug << state << endl;
   deque<Location> ants(state.myAnts.begin(), state.myAnts.end());
-  vector< vector<bool> > used(state.rows, vector<bool>(state.cols, false));
-  int remaining, moved;
-  // picks out moves for each ant
+  // create agents to represent each ant
+  for (vector<Location>::iterator a = state.myAnts.begin(); a != state.myAnts.end(); a++) {
+    Square &as = state.grid[(*a).row][(*a).col];
+    if (as.id == -1) {
+      as.id = state.nextId;
+      agents.push_back(Agent(as.id, *a, &active));
+      active.enter(&agents[as.id]);
+      state.bug << "agent created " << as.id << " " << (*a) << endl;
+      state.nextId++;
+    }
+  }
+  // assign a move to each ant
+  int moved = 0, remaining = 0;
   do {
-    remaining = ants.size();
     moved = 0;
+    remaining = ants.size();
     while (!ants.empty() && remaining-- > 0) {
       Location a = ants.front();
+      Square &as = state.grid[a.row][a.col];
+      Agent &agent = agents[as.id];
       ants.pop_front();
-      Square &as = state.grid[a.row][a.row];
-      int bestd = -1;
-      float bestf = 0.0;//as.influence();
-      for (int d = 0; d < TDIRECTIONS; d++) {
-        Location b = state.getLocation(a, d);
-        Square &bs = state.grid[b.row][b.col];
-        if (!used[b.row][b.col] && bs.good > bs.bad) {
-          float f = bs.influence();
-          if (f > bestf) {
-            bestd = d;
-            bestf = f;
-          }
-        }
-      }
-      if (bestd != -1) {
-        Location b = state.getLocation(a, bestd);
-        Square &bs = state.grid[b.row][b.col];
-        if (!used[b.row][b.col]) {
-          if (bs.ant != 0) {
-            state.makeMove(a, bestd);
-            used[b.row][b.col] = true;
-            moved++;
-          }
-          else {
-            ants.push_back(a);
-            state.bug << "move occupied " << state.turn << " " << b << "  " << a << endl;
-          }
-        }
+      state.bug << "updating agent " << agent.id << " " << agent.state << endl;
+      if (agent.update()) {
+        moved++;
       }
       else {
-        used[a.row][a.col] = true;
-        moved++;
+        ants.push_back(a);
       }
     }
   } while (moved > 0);

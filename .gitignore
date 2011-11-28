@@ -5,10 +5,12 @@ botviz
 botviz2
 visualizer-old
 forktest
+plot
 *viz
 *.o
 *.zip
 debug.txt
+plot.txt
 bug*.txt
 inf*.txt
 lefty.txt
