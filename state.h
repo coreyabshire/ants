@@ -14,6 +14,7 @@
 #include <vector>
 #include <deque>
 #include <map>
+#include <bitset>
 #include <algorithm>
 
 #include "Timer.h"
@@ -30,14 +31,14 @@ const int NORTH = 0, EAST = 1, SOUTH = 2, WEST = 3;
 enum { VISIBLE, LAND, FOOD, TARGET, UNKNOWN, ENEMY };
 const int kFactors = 6;
 const float weights[kFactors] = {0.0, 0.0, 1.0, 1.1, 0.2, 1.0};
-const float decay[kFactors] = {0.0, 1.0, 0.90, 1.90, 0.97, 0.87};
+const float decay[kFactors] = {0.0, 1.0, 0.90, 0.97, 0.97, 0.87};
 const float loss[kFactors] = {0.9, 1.0, 1.0, 1.0, 1.0, 1.0};
 
 // A square in the grid.
 class Square {
  public:
   bool isVisible, isWater, isHill, isFood, isKnown, isFood2, isHill2;
-  bool isLefty, isStraight, isUsed;
+  bool isLefty, isStraight, isUsed, isBattle;
   int direction;
   int id;
   int ant, hillPlayer, hillPlayer2, lastSeen;
@@ -45,8 +46,9 @@ class Square {
   int enemies;
   vector<float> inf;
   vector<int> deadAnts;
+  vector<int> points;
 
-  Square();
+  Square(int players);
   void reset();
   void markVisible(int turn);
   float influence();
@@ -113,14 +115,14 @@ inline int absdiff(int a, int b) {
 // store current state information
 class State {
  public:
-  int rows, cols, turn, turns, noPlayers;
-  int attackradius2, spawnradius2, viewradius2;
+  int rows, cols, turn, turns, players;
+  int attackradius2, spawnradius2, battleradius2, viewradius2;
   double loadtime, turntime;
   
   int nSquares, nUnknown, nSeen, nVisible;
-  double attackradius, spawnradius, viewradius;
+  double attackradius, spawnradius, battleradius, viewradius;
   vector<Offset> offsets;
-  vector<Offset>::iterator offsetSelf, offsetFirst, attackEnd, spawnEnd, viewEnd;
+  vector<Offset>::iterator offsetSelf, offsetFirst, attackEnd, spawnEnd, battleEnd, viewEnd;
   vector<double> scores;
   bool gameover;
   int64_t seed;
@@ -159,7 +161,7 @@ class State {
   void markVisible(const Location& a);
   void calcOffsets(int radius2, vector<Location> &offsets);
   Location addOffset(const Location &a, const Offset &o);
-
+  bitset<64> summarize(const Location &a);
 
   void updateVisionInformation();
   void updateInfluenceInformation();

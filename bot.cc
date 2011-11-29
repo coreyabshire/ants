@@ -31,12 +31,17 @@ bool Lazy::execute(Agent *a) {
 void Lazy::exit(Agent *a) {
 }
 
-void Active::enter(Agent *a) {
-  a->fatigue = 0;
+void Active::enter(Agent *agent) {
+  bot->state.bug << "entered active state " << agent->id << endl;
 }
 
 bool Active::execute(Agent *agent) {
   Location a = agent->loc;
+  Square &as = bot->state.grid[a.row][a.col];
+  if (as.isBattle) {
+    agent->change(&bot->evade);
+    return false;
+  }
   int d = bot->bestDirection(a);
   if (d != -1) {
     Location b = bot->state.getLocation(a, d);
@@ -44,8 +49,8 @@ bool Active::execute(Agent *agent) {
     if (!bs.isUsed) {
       if (bs.ant != 0) {
         bot->state.makeMove(a, d);
+        bs.isUsed = true;
         agent->loc = b;
-        agent->fatigue++;
         return true;
       }
       else {
@@ -54,6 +59,7 @@ bool Active::execute(Agent *agent) {
     }
   }
   else {
+    as.isUsed = true;
     return true;
   }
 }
@@ -65,16 +71,63 @@ void Defend::enter(Agent *a) {
 }
 
 bool Defend::execute(Agent *a) {
+
 }
 
 void Defend::exit(Agent *a) {
 }
 
-// constructor
-Bot::Bot() : nextAntId(0), lazy(this), active(this), defend(this) {};
+void Evade::enter(Agent *agent) {
+  bot->state.bug << "entered evade state " << agent->id << endl;
+}
 
-Bot::Bot(int rows, int cols) : nextAntId(0), state(rows, cols), lazy(this), active(this), defend(this) {
-};
+bool Evade::execute(Agent *agent) {
+  Location a = agent->loc;
+  Square &as = bot->state.grid[a.row][a.col];
+  if (!as.isBattle) {
+    agent->change(&bot->active);
+    return false;
+  }
+  int d = bot->bestEvadeDirection(a);
+  if (d != -1) {
+    Location b = bot->state.getLocation(a, d);
+    Square &bs = bot->state.grid[b.row][b.col];
+    if (!bs.isUsed) {
+      if (bs.ant != 0) {
+        bot->state.makeMove(a, d);
+        bs.isUsed = true;
+        agent->loc = b;
+        return true;
+      }
+      else {
+        return false;
+      }
+    }
+  }
+  else {
+    as.isUsed = true;
+    return true;
+  }
+}
+
+void Evade::exit(Agent *a) {
+}
+
+void Bot::initAgentStates() {
+  lazy = Lazy(this);
+  active = Active(this);
+  defend = Defend(this);
+  evade = Evade(this);
+}
+
+// constructor
+Bot::Bot() : nextAntId(0) {
+  initAgentStates();
+}
+
+Bot::Bot(int rows, int cols) : nextAntId(0), state(rows, cols) {
+  initAgentStates();
+}
 
 // plays a single game of Ants.
 void Bot::playGame() {
@@ -355,10 +408,25 @@ int Bot::bestDirection(const Location &a) {
   return bestd;
 }
 
-void Bot::makeMoves() {
-  state.bug << "turn " << state.turn << ":" << endl;
-  state.bug << state << endl;
-  deque<Location> ants(state.myAnts.begin(), state.myAnts.end());
+int Bot::bestEvadeDirection(const Location &a) {
+  Square &as = state.grid[a.row][a.col];
+  int bestd = -1;
+  float bestf = as.influence();
+  for (int d = 0; d < TDIRECTIONS; d++) {
+    Location b = state.getLocation(a, d);
+    Square &bs = state.grid[b.row][b.col];
+    if (!bs.isUsed && !bs.isWater) {
+      float f = bs.inf[ENEMY];
+      if (f < bestf) {
+        bestd = d;
+        bestf = f;
+      }
+    }
+  }
+  return bestd;
+}
+
+void Bot::createMissingAgents() {
   // create agents to represent each ant
   for (vector<Location>::iterator a = state.myAnts.begin(); a != state.myAnts.end(); a++) {
     Square &as = state.grid[(*a).row][(*a).col];
@@ -370,7 +438,25 @@ void Bot::makeMoves() {
       state.nextId++;
     }
   }
-  // assign a move to each ant
+}
+
+void Bot::showSummaries() {
+  for (vector<Location>::iterator a = state.myAnts.begin(); a != state.myAnts.end(); a++) {
+    bitset<64> bits = state.summarize(*a);
+    state.bug << "summary for " << (*a) << " is " << bits << endl;
+  }
+}
+
+void Bot::markMyHillsUsed() {
+  for (vector<Location>::iterator a = state.myHills.begin(); a != state.myHills.end(); a++) {
+    Square &as = state.grid[(*a).row][(*a).col];
+    as.isUsed = true;
+  }
+}
+
+// assign a move to each ant
+void Bot::updateAgents(vector<Location> &myAnts) {
+  deque<Location> ants(myAnts.begin(), myAnts.end());
   int moved = 0, remaining = 0;
   do {
     moved = 0;
@@ -380,15 +466,21 @@ void Bot::makeMoves() {
       Square &as = state.grid[a.row][a.col];
       Agent &agent = agents[as.id];
       ants.pop_front();
-      state.bug << "updating agent " << agent.id << " " << agent.state << endl;
-      if (agent.update()) {
+      if (agent.update())
         moved++;
-      }
-      else {
+      else
         ants.push_back(a);
-      }
     }
   } while (moved > 0);
+}
+
+void Bot::makeMoves() {
+  state.bug << "turn " << state.turn << ":" << endl;
+  //state.bug << state << endl;
+  createMissingAgents();
+  //showSummaries();
+  markMyHillsUsed();
+  updateAgents(state.myAnts);
   state.bug << "time taken: " << state.turn << " " << state.timer.getTime() << "ms" << endl << endl;
 }
 

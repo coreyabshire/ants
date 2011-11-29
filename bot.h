@@ -96,6 +96,16 @@ class Defend : public AgentState {
   virtual void exit(Agent *a);
 };
 
+class Evade : public AgentState {
+ public:
+  Bot *bot;
+  Evade() {};
+  Evade(Bot *bot) : bot(bot) {};
+  virtual void enter(Agent *a);
+  virtual bool execute(Agent *a);
+  virtual void exit(Agent *a);
+};
+
 class Bot {
  public:
   State state;
@@ -123,8 +133,14 @@ class Bot {
   Lazy lazy;
   Active active;
   Defend defend;
+  Evade evade;
+  void initAgentStates();
 
+  void createMissingAgents();
+  void markMyHillsUsed();
+  void updateAgents(vector<Location> &myAnts);
   int bestDirection(const Location &a);
+  int bestEvadeDirection(const Location &a);
 
   void goLefty(set<Location> &antsUsed);  //makes moves for a single turn
   void goLefty2(set<Location> &antsUsed);  //makes moves for a single turn
@@ -143,6 +159,7 @@ class Bot {
   int search(set<Location> &sources, const Location &target, list< Route > &routes, int maxCount);
   bool search(Location &start, Location &goal, Route &route);
   int numAttackAnts(int totalAnts);
+  void showSummaries();
 };
 
 

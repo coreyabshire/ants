@@ -1,7 +1,7 @@
 #include "state.h"
 
-Square::Square() : inf(kFactors, 0.0) {
-  isVisible = isWater = isHill = isFood = isKnown = 0;
+Square::Square(int players) : inf(kFactors, 0.0), points(players) {
+  isVisible = isWater = isHill = isFood = isKnown = isBattle = 0;
   good = goodmove = bad = badmove = 0;
   isUsed = 0;
   id = -1;
@@ -14,11 +14,13 @@ Square::Square() : inf(kFactors, 0.0) {
 
 //resets the information for the square except water information
 void Square::reset() {
-  isVisible = isHill2 = isFood2 = 0;
+  isVisible = isHill2 = isFood2 = isBattle = 0;
   good = goodmove = bad = badmove = 0;
   isUsed = 0;
   ant = hillPlayer2 = -1;
   inf[VISIBLE] *= loss[VISIBLE];
+  for (vector<int>::iterator i = points.begin(); i != points.end(); i++)
+    *i = 0;
   deadAnts.clear();
 }
 
@@ -40,12 +42,12 @@ float Square::influence() {
 }
 
 // constructor
-State::State() : gameover(0), turn(0), nextId(0) {
+State::State() : gameover(0), turn(0), nextId(0), players(2) {
   bug.open("./debug.txt");
   sim = &defaultSim;
 }
 
-State::State(Sim *sim) : gameover(0), turn(0), nextId(0), sim(sim) {
+State::State(Sim *sim) : gameover(0), turn(0), nextId(0), sim(sim), players(2) {
   bug.open("./debug.txt");
 }
 
@@ -54,7 +56,7 @@ State::~State() {
   bug.close();
 }
 
-State::State(int rows, int cols) : gameover(0), turn(0), rows(rows), cols(cols), nextId(0) {
+State::State(int rows, int cols) : gameover(0), turn(0), rows(rows), cols(cols), nextId(0), players(2) {
   bug.open("./debug.txt");
   sim = &defaultSim;
   setup();
@@ -64,13 +66,16 @@ State::State(int rows, int cols) : gameover(0), turn(0), rows(rows), cols(cols),
 void State::setup() {
   nSquares = nUnknown = rows * cols;
   nSeen = nVisible = 0;
-  grid = vector< vector<Square> >(rows, vector<Square>(cols, Square()));
+  grid = vector< vector<Square> >(rows, vector<Square>(cols, Square(players)));
 
   int n = max(rows, cols);
   bug << "setup grid for size " << n << endl;
 
   distance2Grid = vector< vector<int> >(n, vector<int>(n, 0));
   distanceGrid = vector< vector<double> >(n, vector<double>(n, 0.0));
+
+  battleradius = (attackradius + 2.0);
+  battleradius2 = round(battleradius * battleradius);
                                                 
   bug << "pre-calculating distances" << endl;
   for (int r = 0; r < n; r++) {
@@ -100,6 +105,8 @@ void State::setup() {
   spawnEnd = offset;
   for (; (offset < offsets.end()) && (*offset).d2 <= attackradius2; offset++);
   attackEnd = offset;
+  for (; (offset < offsets.end()) && (*offset).d2 <= battleradius2; offset++);
+  battleEnd = offset;
   for (; (offset < offsets.end()) && (*offset).d2 <= viewradius2; offset++);
   viewEnd = offset;
 
@@ -135,7 +142,6 @@ void State::makeMove(const Location &loc, int d) {
   Location nLoc = getLocation(loc, d);
   grid[nLoc.row][nLoc.col].ant = grid[loc.row][loc.col].ant;
   grid[nLoc.row][nLoc.col].id = grid[loc.row][loc.col].id;
-  grid[nLoc.row][nLoc.col].isUsed = 1;
   grid[loc.row][loc.col].ant = -1;
   grid[loc.row][loc.col].id = -1;
 }
@@ -158,6 +164,16 @@ void State::makeMove(const Location &loc, int d) {
 
 // void State::evaluate() {
 // }
+
+bitset<64> State::summarize(const Location &a) {
+  bitset<64> bits;
+  for (int i = 0; i < 64; i++) {
+    Offset &o = offsets[i];
+    Location b = addOffset(a, o);
+    bits[i] = grid[b.row][b.col].isWater;
+  }
+  return bits;
+}
 
 Location State::addOffset(const Location &a, const Offset &o){
   return Location(addWrap(a.row, o.r, rows), addWrap(a.col, o.c, cols));
@@ -247,18 +263,29 @@ void State::markVisible(const Location& a) {
 void State::updateVisionInformation() {
   bug << "updating vision " << turn << endl;
   for (vector<Location>::iterator a = myAnts.begin(); a != myAnts.end(); a++) {
+    Square &as = grid[(*a).row][(*a).col];
     for (vector<Offset>::iterator o = offsetSelf; o != viewEnd; o++) {
       markVisible(addOffset(*a, *o));
     }
     for (vector<Offset>::iterator o = offsetSelf; o != attackEnd; o++) {
       Location b = addOffset(*a, *o);
-      grid[b.row][b.col].good++;
+      Square &bs = grid[b.row][b.col];
+      bs.good++;
+      bs.points[as.ant]++;
     }
   }
   for (vector<Location>::iterator a = enemyAnts.begin(); a != enemyAnts.end(); a++) {
+    Square &as = grid[(*a).row][(*a).col];
     for (vector<Offset>::iterator o = offsetSelf; o != attackEnd; o++) {
       Location b = addOffset(*a, *o);
-      grid[b.row][b.col].bad++;
+      Square &bs = grid[b.row][b.col];
+      bs.bad++;
+      bs.points[as.ant]++;
+    }
+    for (vector<Offset>::iterator o = offsetSelf; o != battleEnd; o++) {
+      Location b = addOffset(*a, *o);
+      Square &bs = grid[b.row][b.col];
+      bs.isBattle = true;
     }
   }
 }
@@ -471,11 +498,11 @@ istream& operator>>(istream &is, State &state) {
           state.enemyHills.push_back(Location(row, col));
       }
       else if(inputType == "players") { //player information
-        is >> state.noPlayers;
+        is >> state.players;
       }
       else if(inputType == "scores") { //score information
-        state.scores = vector<double>(state.noPlayers, 0.0);
-        for(int p=0; p<state.noPlayers; p++)
+        state.scores = vector<double>(state.players, 0.0);
+        for(int p=0; p<state.players; p++)
           is >> state.scores[p];
       }
       else if(inputType == "go") { //end of turn input
