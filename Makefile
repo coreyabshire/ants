@@ -1,7 +1,7 @@
 CC=g++
 CFLAGS=-O3 -funroll-loops -c
 LDFLAGS=-O2 -lm -lGL -lGLU -lglut
-SOURCES=MyBot.cc bot.cc state.cc
+SOURCES=VizBot.cc bot.cc state.cc
 HEADERS=bot.h state.h
 OBJECTS=$(addsuffix .o, $(basename ${SOURCES}))
 EXECUTABLE=MyBot
@@ -12,9 +12,9 @@ TESTOBJECTS=$(addsuffix .o, $(basename ${TESTSOURCES}))
 TESTEXECUTABLE=UnitTest
 
 VIZLDFLAGS=-O2 -lm -lGL -lGLU -lglut
-VIZSOURCES=trainer.cc bot.cc state.cc
+VIZSOURCES=diffuse.cc bot.cc state.cc
 VIZOBJECTS=$(addsuffix .o, $(basename ${VIZSOURCES}))
-VIZEXECUTABLE=trainer
+VIZEXECUTABLE=diffuse
 
 #Uncomment the following to enable debugging
 CFLAGS+=-g -DDEBUG

@@ -2,16 +2,16 @@
 #include "state.h"
 #include "bot.h"
 
-TEST(Bot, DoMoveDirection) {
-  Bot bot(10, 10);
-  Location a(5, 5), n(4, 5), s(6, 5), e(5, 4), w(5, 6);
-  bot.state[a].ant = 0;
-  bot.state.myAnts.push_back(a);
-  EXPECT_TRUE(bot.doMoveDirection(a, NORTH));
-  EXPECT_EQ(-1, bot.state[a].ant);
-  EXPECT_EQ(0, bot.state[n].ant);
-  EXPECT_EQ(1, bot.orders.count(n));
-}
+// TEST(Bot, DoMoveDirection) {
+//   Bot bot(10, 10);
+//   Location a(5, 5), n(4, 5), s(6, 5), e(5, 4), w(5, 6);
+//   bot.state[a].ant = 0;
+//   bot.state.ants.push_back(a);
+//   EXPECT_TRUE(bot.doMoveDirection(a, NORTH));
+//   EXPECT_EQ(-1, bot.state[a].ant);
+//   EXPECT_EQ(0, bot.state[n].ant);
+//   EXPECT_EQ(1, bot.orders.count(n));
+// }
 
 TEST(Route, Assignment) {
   Location a(1, 1), b(2, 2), o(0,0);
@@ -47,10 +47,10 @@ TEST(State, Sizes) {
   State state(200, 200);
   Location a(0, 0);
   EXPECT_EQ(8, sizeof a);
-  EXPECT_EQ(128, sizeof state.grid[0][0]);
+  EXPECT_EQ(144, sizeof state.grid[0][0]);
   EXPECT_EQ(200, state.grid.size());
   EXPECT_EQ(40000, state.grid.size() * state.grid[0].size());
-  EXPECT_EQ(5120000, state.rows * state.cols * sizeof state.grid[0][0]);
+  EXPECT_EQ(5760000, state.rows * state.cols * sizeof state.grid[0][0]);
   EXPECT_EQ(976, sizeof state);
 }
 
@@ -107,6 +107,35 @@ TEST(State, Manhattan) {
   EXPECT_EQ(4, state.manhattan(b, a));
   EXPECT_EQ(5, state.manhattan(a, c));
   EXPECT_EQ(5, state.manhattan(c, a));
+}
+
+TEST(State, TryMoves) {
+  State state(10, 10);
+  Location a(1, 1), b(1, 2);
+  vector<int> moves;
+  vector<int> ants;
+  EXPECT_EQ(-1, state.grid[1][1].ant);
+  EXPECT_EQ(-1, state.grid[1][2].ant);
+  EXPECT_EQ(-1, state.grid[2][1].ant);
+  EXPECT_EQ(-1, state.grid[0][2].ant);
+  state.putAnt(1, 1, 0);
+  state.putAnt(1, 2, 0);
+  EXPECT_EQ(0, state.grid[1][1].ant);
+  EXPECT_EQ(0, state.grid[1][2].ant);
+  EXPECT_EQ(-1, state.grid[2][1].ant);
+  EXPECT_EQ(-1, state.grid[0][2].ant);
+  ants.push_back(0); moves.push_back(SOUTH);
+  ants.push_back(1); moves.push_back(NORTH);
+  state.tryMoves(ants, moves);
+  EXPECT_EQ(-1, state.grid[1][1].ant);
+  EXPECT_EQ(-1, state.grid[1][2].ant);
+  EXPECT_EQ(0, state.grid[2][1].ant);
+  EXPECT_EQ(0, state.grid[0][2].ant);
+  state.undoMoves(ants);
+  EXPECT_EQ(0, state.grid[1][1].ant);
+  EXPECT_EQ(0, state.grid[1][2].ant);
+  EXPECT_EQ(-1, state.grid[2][1].ant);
+  EXPECT_EQ(-1, state.grid[0][2].ant);
 }
 
 TEST(State, DistanceSpeed) {

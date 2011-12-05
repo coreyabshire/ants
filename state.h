@@ -25,25 +25,28 @@ using namespace std;
 // constants
 const int TDIRECTIONS = 4;
 const char CDIRECTIONS[4] = {'N', 'E', 'S', 'W'};
-const int DIRECTIONS[4][2] = { {-1, 0}, {0, 1}, {1, 0}, {0, -1} }; //{N, E, S, W}
-const int NORTH = 0, EAST = 1, SOUTH = 2, WEST = 3;
+const int DIRECTIONS[4][2]  = { {-1, 0}, {0,  1}, { 1, 0}, {0, -1} }; //{N, E, S, W}
+const int UDIRECTIONS[4] = { 2, 3, 0, 1 };
+const int NOMOVE = -1, NORTH = 0, EAST = 1, SOUTH = 2, WEST = 3;
 
 enum { VISIBLE, LAND, FOOD, TARGET, UNKNOWN, ENEMY };
 const int kFactors = 6;
 const float weights[kFactors] = {0.0, 0.0, 1.0, 1.1, 0.2, 1.0};
-const float decay[kFactors] = {0.0, 1.0, 0.90, 0.97, 0.97, 0.87};
+const float decay[kFactors] = {0.0, 0.1, 0.2, 0.1, 0.25, 0.0};
 const float loss[kFactors] = {0.9, 1.0, 1.0, 1.0, 1.0, 1.0};
 
 // A square in the grid.
 class Square {
  public:
   bool isVisible, isWater, isHill, isFood, isKnown, isFood2, isHill2;
-  bool isLefty, isStraight, isUsed, isBattle;
+  bool isLefty, isStraight, isUsed;
   int direction;
-  int id;
+  int id, index;
   int ant, hillPlayer, hillPlayer2, lastSeen;
+  int ant2, id2;
   int good, goodmove, bad, badmove;
   int enemies;
+  int battle;
   vector<float> inf;
   vector<int> deadAnts;
   vector<int> points;
@@ -127,6 +130,7 @@ class State {
   bool gameover;
   int64_t seed;
   int nextId;
+  int battle;
 
   Sim defaultSim;
   Sim *sim;
@@ -135,7 +139,9 @@ class State {
   vector< vector<double> > distanceGrid;
   vector< vector<int> > distance2Grid;
 
-  vector<Location> myAnts, enemyAnts, myHills, enemyHills, food;
+  vector<Location> ants, hills, food;
+  vector<Location> moveFrom;
+  vector<int> moves;
 
   Timer timer;
   Bug bug;
@@ -148,8 +154,13 @@ class State {
   void setup();
   void reset();
 
-  void makeMove(const Location &loc, int direction);
-
+  void writeMoves();
+  void makeMove(int i, int d);
+  void undoMove(int i);
+  bool tryMoves(vector<int> &va, vector<int> &vm);
+  void undoMoves(vector<int> &va);
+  void printAnts(vector<int> &ants);
+  
   double distance(const Location &loc1, const Location &loc2);
   int distance2(const Location &loc1, const Location &loc2);
   int manhattan(const Location &a, const Location &b);
@@ -163,10 +174,19 @@ class State {
   Location addOffset(const Location &a, const Offset &o);
   bitset<64> summarize(const Location &a);
 
-  void updateVisionInformation();
-  void updateInfluenceInformation();
-  void dumpInfluenceInformation();
+  void putAnt(int row, int col, int player);
+  void putDead(int row, int col, int player);
+  void putHill(int row, int col, int player);
+  void putFood(int row, int col);
+  void putWater(int row, int col);
+  void updatePlayers(int player);
 
+  void updateVisionInformation();
+  void updateInfluenceInformation(int iterations);
+  void dumpInfluenceInformation();
+  void updateDeadInformation(vector<int> &is, vector<int> &dead);
+  bool payoffWin(vector<int> &ants);
+  
   Square& squareAt(Location a) { return grid[a.row][a.col]; }
   Square& operator[](Location a) { return squareAt(a); }
 };

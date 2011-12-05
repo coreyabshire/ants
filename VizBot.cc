@@ -52,9 +52,9 @@ void timer(int value) {
   Bot &bot = *gbot;
   if (cin >> bot.state) {
     bot.state.updateVisionInformation();
-    bot.state.updateInfluenceInformation();
+    bot.state.updateInfluenceInformation(20);
     grids.push_back(bot.state.grid);
-    antCounts.push_back(bot.state.myAnts.size());
+    antCounts.push_back(bot.state.ants.size());
     foodCounts.push_back(bot.state.food.size());
     routes.push_back(bot.xroutes);
     turn = bot.state.turn;
@@ -268,7 +268,10 @@ void display(void) {
         float fg = (float) s.good * 0.2;
         float fv = (float) s.isVisible * 0.2;
         float fb = (float) s.bad * 0.2;
+        fg = (float) s.points[0] * 0.2;
+        fb = (float) s.points[1] * 0.2;
         tile(c, r, fb, inf + 0.1, fg + fv);
+        //tile(c, r, fb, inf + 0.1, fg + fv);
       }
     }
   }
@@ -300,7 +303,7 @@ int main(int argc, char *argv[]) {
   bot.state.setup();
   bot.setup();
   grids.push_back(bot.state.grid);
-  antCounts.push_back(bot.state.myAnts.size());
+  antCounts.push_back(bot.state.ants.size());
   foodCounts.push_back(bot.state.food.size());
   routes.push_back(bot.xroutes);
   turn = bot.state.turn;

@@ -43,6 +43,8 @@ class Fcmp {
   }
 };
 
+enum { ATTACK, EVADE };
+
 class Agent;
 class Bot;
 
@@ -60,7 +62,8 @@ class Agent {
   int fatigue;
   Location loc;
   AgentState *state;
-  Agent(int id, const Location& loc, AgentState *state) : id(id), loc(loc), state(state) {};
+  int mode;
+  Agent(int id, const Location& loc, AgentState *state) : id(id), loc(loc), state(state), mode(ATTACK) {};
   virtual ~Agent() {};
   bool update();
   void change(AgentState *s);
@@ -106,11 +109,42 @@ class Evade : public AgentState {
   virtual void exit(Agent *a);
 };
 
+class Attack : public AgentState {
+ public:
+  Bot *bot;
+  Attack() {};
+  Attack(Bot *bot) : bot(bot) {};
+  virtual void enter(Agent *a);
+  virtual bool execute(Agent *a);
+  virtual void exit(Agent *a);
+};
+
+class EnemyState : public AgentState {
+ public:
+  Bot *bot;
+  EnemyState() {};
+  EnemyState(Bot *bot) : bot(bot) {};
+  virtual void enter(Agent *a);
+  virtual bool execute(Agent *a);
+  virtual void exit(Agent *a);
+};
+
+// class ArenaSquare {
+//   bool dead;
+//   int ant;
+//   int ants;
+// };
+
+// class Arena {
+//   vector< vector<ArenaSquare> > grid;
+  
+// };
+
 class Bot {
  public:
   State state;
   Bot();
-  Bot(Sim *sim) : state(sim) {};
+  Bot(Sim *sim);
   Bot(int rows, int cols);
   void playGame();   //plays a single game of Ants
   void setup();      //set up the bot on initial turn
@@ -134,13 +168,19 @@ class Bot {
   Active active;
   Defend defend;
   Evade evade;
+  EnemyState enemyState;
   void initAgentStates();
 
   void createMissingAgents();
+  void classifyAnts(vector< vector<int> > &battle, vector<int> &normal);
   void markMyHillsUsed();
-  void updateAgents(vector<Location> &myAnts);
+  void updateAgents(vector<int> &ants);
+  bool updateAgent(Agent &agent);
   int bestDirection(const Location &a);
   int bestEvadeDirection(const Location &a);
+  void makeAttackMoves(vector<int> &ants);
+  bool nextPermutation(vector<int> &moves);
+  bool payoffWin(vector<int> &ants);
 
   void goLefty(set<Location> &antsUsed);  //makes moves for a single turn
   void goLefty2(set<Location> &antsUsed);  //makes moves for a single turn
@@ -161,6 +201,8 @@ class Bot {
   int numAttackAnts(int totalAnts);
   void showSummaries();
 };
+
+ostream& operator<<(ostream& os, const vector<int> &a);
 
 
 #endif //BOT_H_

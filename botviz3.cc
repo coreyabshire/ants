@@ -1,3 +1,5 @@
+/* botviz3: experiment with ant steering */
+
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -27,6 +29,12 @@ class GameMap {
   int rows, cols, players;
   vector<string> lines;
   int load(string filename);
+};
+
+class Ant {
+ public:
+  Bot *bot;
+  void update();
 };
 
 class Game {
