@@ -225,8 +225,9 @@ void Bot::makeAttackMoves(vector<int> &ants) {
   } while (nextPermutation(mm));
   if (maxu > -1) {
     state.bug << "found best moves " << " " << maxu << " " << best << endl;
-    for (size_t i = 0; i < ma.size(); i++)
-      state.makeMove(ma[i], best[i]);
+    assert(state.tryMoves(ma, best));
+    // for (size_t i = 0; i < ma.size(); i++)
+    //   state.makeMove(ma[i], best[i]);
   }
 }
 

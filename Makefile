@@ -1,6 +1,6 @@
 CC=g++
-CFLAGS=-c -Wall #-O2 #-O3 -funroll-loops -c
-LDFLAGS=-lm #-O2
+CFLAGS=-c -Wall -O2 #-O3 -funroll-loops -c
+LDFLAGS=-lm -O2
 SOURCES=MyBot.cc bot.cc state.cc
 HEADERS=bot.h state.h
 OBJECTS=$(addsuffix .o, $(basename ${SOURCES}))
@@ -22,7 +22,9 @@ UTILOBJECTS=$(addsuffix .o, $(basename ${UTILSOURCES}))
 UTILEXECUTABLE=payoff
 
 #Uncomment the following to enable debugging
-CFLAGS+=-g -DDEBUG
+CFLAGS+=-g -DDEBUG 
+#Comment the following to enable assertions 
+#CFLAGS+=-DNDEBUG
 
 all: $(OBJECTS) $(EXECUTABLE) $(VIZEXECUTABLE) $(UTILEXECUTABLE) test
 

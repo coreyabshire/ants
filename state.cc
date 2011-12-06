@@ -352,18 +352,21 @@ bool State::payoffWin(vector<int> &ants) {
 //       the ant is marked dead (actual removal is done after all battles are resolved)
 //       break out of enemy loop
 
-void State::updateDeadInformation(vector<int> &is, vector<int> &dead) {
-  //bug << "starting update dead " << is.size() << " " << dead.size() << " " << ants.size()
-  //    << " is " << is << " dead " << dead << endl;
-  //printAnts(is);
+int State::assertAllAnts(vector<int> &is) {
+  int nonAnts = 0;
   for (size_t i = 0; i < is.size(); i++) {
     Location &a = ants[is[i]];
     Square &as = grid[a.row][a.col];
-    if (as.ant == -1) {
-      //bug << "ERROR: as.ant is not an ant " << i << " " << is[i] << " " << a << " " << as.ant << endl;
-      return;
-    }
+    bool isAnt = as.ant >= 0;
+    if (!isAnt)
+      ++nonAnts;
+    assert(isAnt);
   }
+  return nonAnts;
+}
+
+void State::updateDeadInformation(vector<int> &is, vector<int> &dead) {
+  assertAllAnts(is);
   for (size_t i = 0; i < is.size(); i++) {
     Location &a = ants[is[i]];
     Square &as = grid[a.row][a.col];
@@ -503,11 +506,24 @@ void State::updateDir(int i) {
   }
 }
 
+// SCORE
+// proximity of my ants to food
+// proximity of my ants to enemy hills
+// proximity of enemy ants to food
+// proximity of enemy ants to my hills
+// proximity of my ants to each other depending on if there is food around
+// proximity of my ants to my hill
+// number of my ants that would die
+// number of enemy ants that would die
+// int State::score() {
+// }
+
 int State::pickRandomAnt() {
   return rand() % ants.size();
 }
 
 bool State::hasAntConsistency() {
+  bug << "checking ant consistency " << turn << endl;
   vector<bool> found(nextId, false);
   for (int r = 0; r < rows; r++) {
     for (int c = 0; c < cols; c++) {
@@ -529,7 +545,7 @@ bool State::hasAntConsistency() {
 }
 
 void State::update() {
-        assert(hasAntConsistency());
+  assert(hasAntConsistency());
   updateVisionInformation();
   updateInfluenceInformation(10);
   //initDir();

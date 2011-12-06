@@ -207,6 +207,7 @@ class State {
   int pickRandomAnt();
   void updateDeadInformation(vector<int> &is, vector<int> &dead);
   bool payoffWin(vector<int> &ants);
+  int assertAllAnts(vector<int> &is);
 
   Square *antSquareAt(int i) { return squareAt(ants[i]); }
   Square *squareAt(Location a) { return &(grid[a.row][a.col]); }

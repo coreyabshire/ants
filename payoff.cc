@@ -19,7 +19,7 @@ bool payoffWin(State &state, vector<int> &ants) {
   state.updateDeadInformation(ants, dead);
   int d = 0;
   for (int i = 0; i < state.players; i++) {
-    cout << dead[i];
+    //    cout << dead[i];
     d += dead[i];
   }
   int u = d - (2*dead[0]);
@@ -34,8 +34,11 @@ int main(int argc, char **argv) {
   Bot bot(100,100);
   State &state = bot.state;
   state.putAnt(2,1,1);
+  state.putAnt(1,2,1);
+  state.putAnt(1,3,1);
   state.putAnt(3,4,0);
   state.putAnt(4,3,0);
+  state.putAnt(4,4,0);
   vector<int> ants;
   for (size_t i = 0; i < state.ants.size(); i++)
     ants.push_back(i);
