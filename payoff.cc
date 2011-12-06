@@ -9,7 +9,7 @@ char cd(int d) {
 }
 
 void prmoves(vector<int> m) {
-  for (int i = 0; i < m.size(); i++) {
+  for (size_t i = 0; i < m.size(); i++) {
     cout << cd(m[i]);
   }
 }
@@ -37,12 +37,12 @@ int main(int argc, char **argv) {
   state.putAnt(3,4,0);
   state.putAnt(4,3,0);
   vector<int> ants;
-  for (int i = 0; i < state.ants.size(); i++)
+  for (size_t i = 0; i < state.ants.size(); i++)
     ants.push_back(i);
   vector<int> ma, ea;
   state.bug << "calculating attack moves " << ants << endl;
   state.printAnts(ants);
-  for (int i = 0; i < ants.size(); i++) {
+  for (size_t i = 0; i < ants.size(); i++) {
     Location &a = state.ants[ants[i]];
     Square &as = state.grid[a.row][a.col];
     if (as.ant == 0)
@@ -100,8 +100,9 @@ int main(int argc, char **argv) {
     }
   } while (bot.nextPermutation(mm));
   if (maxu > -1) {
-    cout << "found best moves " << " " << maxu << " " << best << endl;
-    for (int i = 0; i < ma.size(); i++)
-      state.makeMove(ma[i], best[i]);
+    cout << "found best moves " << " " << maxu << ":";
+    for (size_t i = 0; i < ma.size(); i++)
+      cout << " " << CDIRECTIONS[best[i]];
+    cout << endl;
   }
 }
