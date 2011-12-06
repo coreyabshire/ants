@@ -2,19 +2,11 @@
 #define STATE_H_
 
 #include <iostream>
-#include <stdio.h>
 #include <cstdlib>
+#include <cassert>
 #include <cmath>
-#include <string>
-#include <vector>
-#include <queue>
-#include <stack>
-#include <set>
-#include <stdint.h>
 #include <vector>
 #include <deque>
-#include <map>
-#include <bitset>
 #include <algorithm>
 
 #include "Timer.h"
@@ -23,11 +15,12 @@
 using namespace std;
 
 // constants
-const int TDIRECTIONS = 4;
-const char CDIRECTIONS[4] = {'N', 'E', 'S', 'W'};
-const int DIRECTIONS[4][2]  = { {-1, 0}, {0,  1}, { 1, 0}, {0, -1} }; //{N, E, S, W}
-const int UDIRECTIONS[4] = { 2, 3, 0, 1 };
-const int NOMOVE = -1, NORTH = 0, EAST = 1, SOUTH = 2, WEST = 3;
+enum { NOMOVE, NORTH, EAST, SOUTH, WEST };
+const int TDIRECTIONS = 5;
+const char CDIRECTIONS[TDIRECTIONS] = {'-', 'N', 'E', 'S', 'W'};
+const int DIRECTIONS[TDIRECTIONS][2]  = { {0, 0}, {-1, 0}, {0,  1}, { 1, 0}, {0, -1} }; //{-, N, E, S, W}
+const int UDIRECTIONS[TDIRECTIONS] = { NOMOVE, SOUTH, WEST, NORTH, EAST };
+const int kDirichletAlpha = 1;
 
 enum { VISIBLE, LAND, FOOD, TARGET, UNKNOWN, ENEMY };
 const int kFactors = 6;
@@ -49,12 +42,18 @@ class Square {
   int battle;
   vector<float> inf;
   vector<int> deadAnts;
-  vector<int> points;
 
   Square(int players);
   void reset();
   void markVisible(int turn);
   float influence();
+  void setAnt(int sid, int sindex, int sant, bool sisUsed);
+  bool isAnt();
+  void clearAnt();
+  bool isCleared();
+  bool isEnemy() { return ant > 0; }
+  bool moveAntTo(Square &bs);
+
 };
 
 ostream& operator<<(ostream& os, const Square &square);
@@ -102,6 +101,17 @@ class Sim {
   virtual void go();
 };
 
+enum { ATTACK, EVADE };
+
+class Agent {
+ public:
+  int id;
+  Location loc;
+  int mode;
+  Agent(int id, const Location& loc) : id(id), loc(loc), mode(ATTACK) {};
+  virtual ~Agent() {};
+};
+
 inline int addWrap(int a, int b, int max) {
   return (a + b + max) % max;
 }
@@ -142,9 +152,14 @@ class State {
   vector<Location> ants, hills, food;
   vector<Location> moveFrom;
   vector<int> moves;
+  vector< vector<int> > dir;
 
   Timer timer;
   Bug bug;
+
+  int nextAntId;
+  vector<Agent> agents;
+  void createMissingAgents();
 
   State();
   State(Sim *sim);
@@ -172,7 +187,8 @@ class State {
   void markVisible(const Location& a);
   void calcOffsets(int radius2, vector<Location> &offsets);
   Location addOffset(const Location &a, const Offset &o);
-  bitset<64> summarize(const Location &a);
+  bool hasAntConsistency();
+  //  bitset<64> summarize(const Location &a);
 
   void putAnt(int row, int col, int player);
   void putDead(int row, int col, int player);
@@ -181,42 +197,23 @@ class State {
   void putWater(int row, int col);
   void updatePlayers(int player);
 
+  void clearAnts(vector<int> &va);
+
+  void update();
   void updateVisionInformation();
   void updateInfluenceInformation(int iterations);
-  void dumpInfluenceInformation();
+  void initDir();
+  void updateDir(int i);
+  int pickRandomAnt();
   void updateDeadInformation(vector<int> &is, vector<int> &dead);
   bool payoffWin(vector<int> &ants);
-  
-  Square& squareAt(Location a) { return grid[a.row][a.col]; }
-  Square& operator[](Location a) { return squareAt(a); }
+
+  Square *antSquareAt(int i) { return squareAt(ants[i]); }
+  Square *squareAt(Location a) { return &(grid[a.row][a.col]); }
 };
 
 
 ostream& operator<<(ostream &os, const State &state);
 istream& operator>>(istream &is, State &state);
-
-// represents a route from one location to another
-class Route {
- public:
-  deque<Location> steps;
-  Location start, end;
-  int distance;
-
-  Route() : start(Location(0,0)), end(Location(0,0)), distance(0), steps(deque<Location>()) {};
-  Route(const Location& start, const Location& end, map<Location,Location> &p);
-  Route(const Route &r) {
-    steps = r.steps;
-    start = r.start;
-    end = r.end;
-    distance = r.distance;
-  };
-  
-  void flip();
-
-};
-
-bool operator<(const Route &a, const Route &b);
-bool operator==(const Route &a, const Route &b);
-ostream& operator<<(ostream& os, const Route &r);
 
 #endif //STATE_H_

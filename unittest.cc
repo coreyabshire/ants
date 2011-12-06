@@ -2,56 +2,15 @@
 #include "state.h"
 #include "bot.h"
 
-// TEST(Bot, DoMoveDirection) {
-//   Bot bot(10, 10);
-//   Location a(5, 5), n(4, 5), s(6, 5), e(5, 4), w(5, 6);
-//   bot.state[a].ant = 0;
-//   bot.state.ants.push_back(a);
-//   EXPECT_TRUE(bot.doMoveDirection(a, NORTH));
-//   EXPECT_EQ(-1, bot.state[a].ant);
-//   EXPECT_EQ(0, bot.state[n].ant);
-//   EXPECT_EQ(1, bot.orders.count(n));
-// }
-
-TEST(Route, Assignment) {
-  Location a(1, 1), b(2, 2), o(0,0);
-  map<Location,Location> p;
-  p[b] = a;
-  Route r1(a, b, p), r2, r3(r1);
-  EXPECT_EQ(a, r1.start);
-  EXPECT_EQ(b, r1.end);
-  EXPECT_EQ(2, r1.distance);
-  EXPECT_EQ(o, r2.start);
-  EXPECT_EQ(o, r2.end);
-  EXPECT_EQ(0, r2.distance);
-  EXPECT_EQ(a, r3.start);
-  EXPECT_EQ(b, r3.end);
-  EXPECT_EQ(2, r3.distance);
-  r2 = r1;
-  EXPECT_EQ(a, r2.start);
-  EXPECT_EQ(b, r2.end);
-  EXPECT_EQ(2, r2.distance);
-}
-
-TEST(Bot, Search4) {
-  Bot bot(10, 10);
-  Location start(1, 1), goal(5, 5);
-  Route route;
-  EXPECT_TRUE(bot.search(start, goal, route));
-  EXPECT_EQ(start, route.start);
-  EXPECT_EQ(goal, route.end);
-  EXPECT_EQ(9, route.distance);
-}
-
 TEST(State, Sizes) {
   State state(200, 200);
   Location a(0, 0);
   EXPECT_EQ(8, sizeof a);
-  EXPECT_EQ(144, sizeof state.grid[0][0]);
+  EXPECT_EQ(120, sizeof state.grid[0][0]);
   EXPECT_EQ(200, state.grid.size());
   EXPECT_EQ(40000, state.grid.size() * state.grid[0].size());
-  EXPECT_EQ(5760000, state.rows * state.cols * sizeof state.grid[0][0]);
-  EXPECT_EQ(976, sizeof state);
+  EXPECT_EQ(4800000, state.rows * state.cols * sizeof state.grid[0][0]);
+  EXPECT_EQ(1032, sizeof state);
 }
 
 TEST(State, Distance) {
@@ -126,7 +85,8 @@ TEST(State, TryMoves) {
   EXPECT_EQ(-1, state.grid[0][2].ant);
   ants.push_back(0); moves.push_back(SOUTH);
   ants.push_back(1); moves.push_back(NORTH);
-  state.tryMoves(ants, moves);
+  EXPECT_TRUE(state.tryMoves(ants, moves));
+  state.printAnts(ants);
   EXPECT_EQ(-1, state.grid[1][1].ant);
   EXPECT_EQ(-1, state.grid[1][2].ant);
   EXPECT_EQ(0, state.grid[2][1].ant);
@@ -138,55 +98,70 @@ TEST(State, TryMoves) {
   EXPECT_EQ(-1, state.grid[0][2].ant);
 }
 
-TEST(State, DistanceSpeed) {
-  State state(200, 200);
-  vector<Location> a;
-  for (int i = 0; i < 1000; i++)
-    a.push_back(state.randomLocation());
-  Timer timer;
-  timer.start();
-  for (int i = 0; i < 1000000; i++) {
-    double distance = state.distance(a[rand()%1000], a[rand()%1000]);
-  }
-  EXPECT_PRED_FORMAT2(::testing::FloatLE, 0.001, timer.getTime());
+TEST(State, MoveAntTo) {
+  State state(10, 10);
+  Location a(1, 1), b(1, 2);
+  EXPECT_FALSE(state.grid[1][1].isUsed);
+  EXPECT_FALSE(state.grid[1][2].isUsed);
+  state.putAnt(1, 1, 0);
+  EXPECT_FALSE(state.grid[1][1].isUsed);
+  EXPECT_FALSE(state.grid[1][2].isUsed);
+  EXPECT_EQ(0, state.grid[1][1].ant);
+  EXPECT_EQ(-1, state.grid[1][2].ant);
+  EXPECT_FALSE(state.grid[1][1].isUsed);
+  EXPECT_FALSE(state.grid[1][2].isUsed);
+  state.grid[a.row][a.col].moveAntTo(state.grid[b.row][b.col]);
+  EXPECT_EQ(-1, state.grid[1][1].ant);
+  EXPECT_EQ(0, state.grid[1][2].ant);
 }
 
-TEST(State, Distance2Speed) {
-  State state(200, 200);
-  vector<Location> a;
-  for (int i = 0; i < 1000; i++)
-    a.push_back(state.randomLocation());
-  Timer timer;
-  timer.start();
-  for (int i = 0; i < 1000000; i++) {
-    int distance = state.distance2(a[rand()%1000], a[rand()%1000]);
-  }
-  EXPECT_PRED_FORMAT2(::testing::FloatLE, 0.001, timer.getTime());
+TEST(State, UpdateInfluenceInformation) {
+  State state(10, 10);
+  Location a(1, 1), b(1, 2);
+  state.putAnt(1, 1, 0);
+  state.putFood(4, 4);
+  state.updateVisionInformation();
+  state.updateInfluenceInformation(1000);
 }
 
-TEST(State, ManhattanSpeed) {
-  State state(200, 200);
-  vector<Location> a;
-  for (int i = 0; i < 1000; i++)
-    a.push_back(state.randomLocation());
-  Timer timer;
-  timer.start();
-  for (int i = 0; i < 1000000; i++) {
-    int distance = state.manhattan(a[rand()%1000], a[rand()%1000]);
-  }
-  EXPECT_PRED_FORMAT2(::testing::FloatLE, 0.001, timer.getTime());
-}
+// TEST(State, DistanceSpeed) {
+//   State state(200, 200);
+//   vector<Location> a;
+//   for (int i = 0; i < 1000; i++)
+//     a.push_back(state.randomLocation());
+//   Timer timer;
+//   timer.start();
+//   for (int i = 0; i < 1000000; i++) {
+//     double distance = state.distance(a[rand()%1000], a[rand()%1000]);
+//   }
+//   EXPECT_PRED_FORMAT2(::testing::FloatLE, 0.001, timer.getTime());
+// }
 
-TEST(State, NumAttackAnts) {
-  Bot bot(20, 20);
-  EXPECT_EQ(0, bot.numAttackAnts(0));
-  EXPECT_EQ(0, bot.numAttackAnts(1));
-  EXPECT_EQ(1, bot.numAttackAnts(5));
-  EXPECT_EQ(2, bot.numAttackAnts(10));
-  EXPECT_EQ(5, bot.numAttackAnts(20));
-  EXPECT_EQ(7, bot.numAttackAnts(200));
-  EXPECT_EQ(7, bot.numAttackAnts(400));
-}
+// TEST(State, Distance2Speed) {
+//   State state(200, 200);
+//   vector<Location> a;
+//   for (int i = 0; i < 1000; i++)
+//     a.push_back(state.randomLocation());
+//   Timer timer;
+//   timer.start();
+//   for (int i = 0; i < 1000000; i++) {
+//     int distance = state.distance2(a[rand()%1000], a[rand()%1000]);
+//   }
+//   EXPECT_PRED_FORMAT2(::testing::FloatLE, 0.001, timer.getTime());
+// }
+
+// TEST(State, ManhattanSpeed) {
+//   State state(200, 200);
+//   vector<Location> a;
+//   for (int i = 0; i < 1000; i++)
+//     a.push_back(state.randomLocation());
+//   Timer timer;
+//   timer.start();
+//   for (int i = 0; i < 1000000; i++) {
+//     int distance = state.manhattan(a[rand()%1000], a[rand()%1000]);
+//   }
+//   EXPECT_PRED_FORMAT2(::testing::FloatLE, 0.001, timer.getTime());
+// }
 
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);

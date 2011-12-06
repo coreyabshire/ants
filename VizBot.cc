@@ -22,7 +22,6 @@ bool showinfo = true;
 vector< vector< vector<Square> > > grids;
 vector<int> antCounts;
 vector<int> foodCounts;
-vector< list<Route> > routes;
 vector<double> turnTimes;
 bool needEndTurn = false;
 bool factor[kFactors] = { 0, 0, 1, 1, 1, 1 };
@@ -56,7 +55,6 @@ void timer(int value) {
     grids.push_back(bot.state.grid);
     antCounts.push_back(bot.state.ants.size());
     foodCounts.push_back(bot.state.food.size());
-    routes.push_back(bot.xroutes);
     turn = bot.state.turn;
     stopwatch.start();
     bot.makeMoves();
@@ -100,16 +98,14 @@ void keyboard(unsigned char k, int x, int y) {
 }
 
 void changeTurn(int n) {
-  Bot &bot = *gbot;
   turn = n;
   if (turn < 0)
     turn = 0;
-  if (turn >= grids.size())
+  if (turn >= (int) grids.size())
     turn = grids.size() - 1;
 }
 
 void special(int k, int x, int y) {
-  Bot &bot = *gbot;
   switch (k) {
     case GLUT_KEY_F1:
       showinfo = !showinfo;
@@ -163,29 +159,6 @@ void line(const Location &a, const Location &b) {
   glEnd();
 }
 
-void line(const Route &route) {
-  glColor3f(0.0, 1.0, 0.0);
-  glBegin(GL_LINE_STRIP);
-  float pr = 0.0, pc = 0.0;
-  bool checkwrap = false;
-  for (deque<Location>::const_iterator a = route.steps.begin(); a != route.steps.end(); a++) {
-    float cr = (*a).row, cc = (*a).col;
-    if (checkwrap) {
-      if (fabs(pr - cr) > 1.0 || fabs(pc - cc) > 1.0) {
-        glEnd();
-        glBegin(GL_LINE_STRIP);
-        checkwrap = false;
-      }
-      glVertex3f(cc + 0.5, cr + 0.5, 0.0);
-    }
-    else {
-      checkwrap = true;
-    }
-    pr = cr, pc = cc;
-  }
-  glEnd();
-}
-
 void text(const int x, const int y, const char *s) {
   float fx = (float) x, fy = (float) y;
   glColor3f(0.0,0.0,0.0);
@@ -212,7 +185,6 @@ float influence(const Square& s) {
 
 void info() {
   Bot &bot = *gbot;
-  State &state = bot.state;
   ostringstream os;
   os << "Turn: " << turn << endl;
   os << "Ants: " << antCounts[turn] << endl;
@@ -254,7 +226,6 @@ void display(void) {
   for (int r = 0; r < state.rows; r++) {
     for (int c = 0; c < state.cols; c++) {
       Square &s = grid[r][c];
-      float f0 = 0.0, f1 = 0.0, f2 = 0.0;
       if (s.isWater)
         tile(c, r, 0.0, 0.0, 0.0);
       else if (s.ant >= 0)
@@ -268,16 +239,10 @@ void display(void) {
         float fg = (float) s.good * 0.2;
         float fv = (float) s.isVisible * 0.2;
         float fb = (float) s.bad * 0.2;
-        fg = (float) s.points[0] * 0.2;
-        fb = (float) s.points[1] * 0.2;
         tile(c, r, fb, inf + 0.1, fg + fv);
         //tile(c, r, fb, inf + 0.1, fg + fv);
       }
     }
-  }
-
-  for (list<Route>::iterator r = routes[turn].begin(); r != routes[turn].end(); r++) {
-    line(*r);
   }
 
   if (showinfo)
@@ -301,11 +266,9 @@ int main(int argc, char *argv[]) {
   stopwatch.start();
   cin >> bot.state;
   bot.state.setup();
-  bot.setup();
   grids.push_back(bot.state.grid);
   antCounts.push_back(bot.state.ants.size());
   foodCounts.push_back(bot.state.food.size());
-  routes.push_back(bot.xroutes);
   turn = bot.state.turn;
   turnTimes.push_back(stopwatch.getTime());
   bot.endTurn();

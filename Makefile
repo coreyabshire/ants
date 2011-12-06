@@ -1,25 +1,30 @@
 CC=g++
-CFLAGS=-O3 -funroll-loops -c
-LDFLAGS=-O2 -lm -lGL -lGLU -lglut
-SOURCES=VizBot.cc bot.cc state.cc
+CFLAGS=-c -Wall -O2 #-O3 -funroll-loops -c
+LDFLAGS=-lm -O2
+SOURCES=MyBot.cc bot.cc state.cc
 HEADERS=bot.h state.h
 OBJECTS=$(addsuffix .o, $(basename ${SOURCES}))
 EXECUTABLE=MyBot
 
-TESTLDFLAGS=-O2 -lm -lgtest -lpthread
+TESTLDFLAGS=-lm -lgtest -lpthread -O2
 TESTSOURCES=unittest.cc bot.cc state.cc
 TESTOBJECTS=$(addsuffix .o, $(basename ${TESTSOURCES}))
 TESTEXECUTABLE=UnitTest
 
 VIZLDFLAGS=-O2 -lm -lGL -lGLU -lglut
-VIZSOURCES=diffuse.cc bot.cc state.cc
+VIZSOURCES=VizBot.cc bot.cc state.cc
 VIZOBJECTS=$(addsuffix .o, $(basename ${VIZSOURCES}))
-VIZEXECUTABLE=diffuse
+VIZEXECUTABLE=VizBot
+
+UTILLDFLAGS=-O2 -lm -lGL -lGLU -lglut
+UTILSOURCES=diffuse.cc bot.cc state.cc
+UTILOBJECTS=$(addsuffix .o, $(basename ${UTILSOURCES}))
+UTILEXECUTABLE=diffuse
 
 #Uncomment the following to enable debugging
 CFLAGS+=-g -DDEBUG
 
-all: $(OBJECTS) $(EXECUTABLE) $(VIZEXECUTABLE) test
+all: $(OBJECTS) $(EXECUTABLE) $(VIZEXECUTABLE)  test
 
 test: $(TESTOBJECTS) $(TESTEXECUTABLE)
 	tools/test_bot.sh ./MyBot
@@ -44,6 +49,8 @@ $(VIZEXECUTABLE): $(VIZOBJECTS)
 clean: 
 	-rm -f ${EXECUTABLE} ${OBJECTS} *.d
 	-rm -f ${TESTEXECUTABLE} ${TESTOBJECTS} *.d
+	-rm -f ${VIZEXECUTABLE} ${VIZOBJECTS} *.d
+	-rm -f ${UTILEXECUTABLE} ${UTILOBJECTS} *.d
 	-rm -f debug.txt
 
 .PHONY: all clean

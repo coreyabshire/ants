@@ -1,15 +1,15 @@
 #include "state.h"
 
-Square::Square(int players) : inf(kFactors, 0.0), points(players) {
+Square::Square(int players) : inf(kFactors, 0.0) {
   isVisible = isWater = isHill = isFood = isKnown = 0;
   good = goodmove = bad = badmove = 0;
   enemies = 0;
-  isUsed = 0;
+  isUsed = false;
   id = -1;
   index = -1;
   isFood2 = isHill2 = 0;
   inf[LAND] = 1.0;
-  direction = -1;
+  direction = NOMOVE;
   battle = -1;
   ant = hillPlayer = hillPlayer2 = -1;
   ant2 = -1;
@@ -21,8 +21,9 @@ void Square::reset() {
   isVisible = isHill2 = isFood2 = 0;
   good = goodmove = bad = badmove = 0;
   enemies = 0;
-  isUsed = 0;
+  isUsed = false;
   index = -1;
+  direction = NOMOVE;
   battle = -1;
   ant = hillPlayer2 = ant2 = -1;
   inf[VISIBLE] *= loss[VISIBLE];
@@ -40,21 +41,60 @@ void Square::markVisible(int turn) {
   inf[VISIBLE] = 1.0;
 }
 
+void Square::setAnt(int sid, int sindex, int sant, bool sisUsed) {
+  id = sid;
+  index = sindex;
+  ant = sant;
+  isUsed = sisUsed;
+}
+
+bool Square::moveAntTo(Square &bs) {
+  assert(!isUsed);
+  assert(isAnt());
+  assert(bs.isCleared());
+  assert(!bs.isWater);
+  assert(!bs.isFood);
+  int tId, tIndex, tAnt;
+  tId = id;
+  tIndex = index;
+  tAnt = ant;
+  clearAnt();
+  bs.id = tId;
+  bs.index = tIndex;
+  bs.ant = tAnt;
+  bs.isUsed = true;
+  return true;
+}
+
+bool Square::isAnt() {
+  return id != -1 && index != -1 && ant != -1;
+}
+
+bool Square::isCleared() {
+  return id == -1 && index == -1 && ant == -1 && isUsed == false;
+}
+
+void Square::clearAnt() {
+  id = -1;
+  index = -1;
+  ant = -1;
+  isUsed = false;
+}
+
 float Square::influence() {
   float sum = 0.0;
-  for (int i = 0; i < kFactors; i++) {
+  for (int i = 0; i < kFactors; i++)
     sum += inf[i] * weights[i];
-  }
   return sum;
 }
 
 // constructor
-State::State() : gameover(0), turn(0), nextId(0), players(2) {
+State::State() : turn(0), players(2), gameover(0), nextId(0) {
   bug.open("./debug.txt");
   sim = &defaultSim;
 }
 
-State::State(Sim *sim) : gameover(0), turn(0), nextId(0), sim(sim), players(2) {
+State::State(Sim *sim) : turn(0), players(2), gameover(0), nextId(0), sim(sim) {
   bug.open("./debug.txt");
 }
 
@@ -63,7 +103,7 @@ State::~State() {
   bug.close();
 }
 
-State::State(int rows, int cols) : gameover(0), turn(0), rows(rows), cols(cols), nextId(0), players(2) {
+State::State(int rows, int cols) : rows(rows), cols(cols), turn(0), players(2), gameover(0), nextId(0) {
   bug.open("./debug.txt");
   sim = &defaultSim;
   spawnradius2 = 1;
@@ -82,6 +122,7 @@ void State::setup() {
   nSquares = nUnknown = rows * cols;
   nSeen = nVisible = 0;
   battle = -1;
+  nextAntId = 0;
   grid = vector< vector<Square> >(rows, vector<Square>(cols, Square(players)));
 
   int n = max(rows, cols);
@@ -125,22 +166,6 @@ void State::setup() {
   battleEnd = offset;
   for (; (offset < offsets.end()) && (*offset).d2 <= viewradius2; offset++);
   viewEnd = offset;
-
-  bug << "offset debug    " << endl;
-  bug << "offset begin    " << *offsets.begin() << endl;
-  bug << "offset self     " << *offsetSelf << endl;
-  bug << "offset first    " << *offsetFirst << endl;
-  bug << "spawn end       " << *spawnEnd << endl;
-  bug << "attack end      " << *attackEnd << endl;
-  bug << "real attack end " << offsets[20] << endl;
-  bug << "battle end      " << *battleEnd << endl;
-  bug << "view end        " << *viewEnd << endl;
-  for (int i = 0; i < 21; i++) {
-    bug << offsets[i] << endl;
-  }
-  
-  bug << "initial influence dump" << endl;
-  dumpInfluenceInformation();
 }
 
 // resets all non-water squares to land and clears the bots ant vector
@@ -152,8 +177,9 @@ void State::reset() {
   food.clear();
   moves.clear();
   moveFrom.clear();
-  for(int row=0; row<rows; row++)
-    for(int col=0; col<cols; col++)
+  dir.clear();
+  for(int row = 0; row < rows; row++)
+    for(int col = 0; col < cols; col++)
       grid[row][col].reset();
 }
 
@@ -167,18 +193,83 @@ void Sim::go() {
 
 ostream& operator<<(ostream& os, const vector<int> &a);
 
+void State::clearAnts(vector<int> &va) {
+  for (size_t i = 0; i < va.size(); i++)
+    antSquareAt(va[i])->clearAnt();
+}  
+
+void State::writeMoves() {
+  for (size_t i = 0; i < ants.size(); i++) {
+    Location &a = moveFrom[i];
+    Location &b = ants[i];
+    int d = moves[i];
+    Square &bs = grid[b.row][b.col];
+    if (bs.ant == 0 && d != NOMOVE)
+      sim->makeMove(a, d);
+  }
+}
+
+void State::makeMove(int i, int d) {
+  Location a = ants[i];
+  if (a.row == 10 && a.col == 82 && turn == 45) {
+    bug << "here it is" << endl;
+  }
+  if (d != NOMOVE) {
+    Location b = getLocation(a, d);
+    assert(grid[a.row][a.col].isUsed == false);
+    assert(grid[b.row][b.col].isUsed == false);
+    if (grid[a.row][a.col].moveAntTo(grid[b.row][b.col])) {
+      agents[grid[b.row][b.col].id].loc = b;
+      moves[i] = d;
+      ants[i] = b;
+    }
+  }
+  else {
+    grid[a.row][a.col].isUsed = true;
+  }
+}
+
+void State::undoMove(int i) {
+  const Location a = ants[i];
+  Square &as = grid[a.row][a.col];
+  int d = moves[i];
+  if (d != NOMOVE) {
+    d = UDIRECTIONS[d];
+    Location b = getLocation(a, d);
+    Square &bs = grid[b.row][b.col];
+    agents[as.id].loc = b;
+    bs.ant = as.ant;
+    bs.id = as.id;
+    bs.index = as.index;
+    as.ant = -1;
+    as.id = -1;
+    as.index = -1;
+    bs.isUsed = false;
+    moves[i] = -1;
+    ants[i] = b;
+  }
+  else {
+    as.isUsed = false;
+  }
+}
+
 bool State::tryMoves(vector<int> &va, vector<int> &vm) {
   vector<Location> pa;
   vector<Location> pb;
   vector<int> sId, sIndex, sAnt;
   vector< vector<bool> > used(rows, vector<bool>(cols, false));
   // store
-  for (int i = 0; i < va.size(); i++) {
+  for (size_t i = 0; i < va.size(); i++) {
     Location &a = ants[va[i]];
     Square &as = grid[a.row][a.col];
-    Location b = vm[i] == -1 ? a : getLocation(a, vm[i]);
+    assert(as.ant == 0 ? as.id >= 0 && as.id < (int)agents.size() : as.id == -1);
+    Location b = getLocation(a, vm[i]);
     Square &bs = grid[b.row][b.col];
-    if (bs.isWater || bs.isUsed || used[b.row][b.col])
+    assert(!as.isUsed);
+    if (bs.isWater || bs.isFood || bs.isUsed || used[b.row][b.col])
+      return false;
+    // prevent stomping on an ant that is not going to be otherwise moved in this set?
+    if (!bs.isCleared() && find(va.begin(), va.end(), bs.index) == va.end())
       return false;
     used[b.row][b.col] = true;
     pa.push_back(a);
@@ -187,25 +278,14 @@ bool State::tryMoves(vector<int> &va, vector<int> &vm) {
     sIndex.push_back(as.index);
     sAnt.push_back(as.ant);
   }
-  // clear
-  for (int i = 0; i < va.size(); i++) {
-    Location &a = pa[i];
-    Square &as = grid[a.row][a.col];
-    as.id = -1;
-    as.index = -1;
-    as.ant = -1;
-    as.isUsed = false;
-  }
+  clearAnts(va);
   // write
-  for (int i = 0; i < va.size(); i++) {
-    Location &b = pb[i];
-    Square &bs = grid[b.row][b.col];
-    bs.id = sId[i];
-    bs.index = sIndex[i];
-    bs.ant = sAnt[i];
-    bs.isUsed = true;
-    ants[va[i]] = b;
+  for (size_t i = 0; i < va.size(); i++) {
+    ants[va[i]] = pb[i];
     moves[va[i]] = vm[i];
+    antSquareAt(va[i])->setAnt(sId[i], sIndex[i], sAnt[i], true);
+    if (sAnt[i] == 0)
+      agents[sId[i]].loc = pb[i];
   }
   return true;
 }
@@ -220,11 +300,10 @@ void State::undoMoves(vector<int> &va) {
   vector<Location> pb;
   vector<int> sId, sIndex, sAnt;
   // store
-  for (int i = 0; i < va.size(); i++) {
+  for (size_t i = 0; i < va.size(); i++) {
     Location &a = ants[va[i]];
     Square &as = grid[a.row][a.col];
-    Location b = moves[va[i]] == -1 ? a : getLocation(a, UDIRECTIONS[moves[va[i]]]);
-    Square &bs = grid[b.row][b.col];
+    Location b = getLocation(a, UDIRECTIONS[moves[va[i]]]);
     pa.push_back(a);
     pb.push_back(b);
     sId.push_back(as.id);
@@ -232,29 +311,19 @@ void State::undoMoves(vector<int> &va) {
     sAnt.push_back(as.ant);
   }
   // clear
-  for (int i = 0; i < va.size(); i++) {
-    Location &a = pa[i];
-    Square &as = grid[a.row][a.col];
-    as.id = -1;
-    as.index = -1;
-    as.ant = -1;
-    as.isUsed = false;
-  }
+  clearAnts(va);
   // write
-  for (int i = 0; i < va.size(); i++) {
-    Location &b = pb[i];
-    Square &bs = grid[b.row][b.col];
-    bs.id = sId[i];
-    bs.index = sIndex[i];
-    bs.ant = sAnt[i];
-    bs.isUsed = false;
-    ants[va[i]] = b;
-    moves[va[i]] = -1;
+  for (size_t i = 0; i < va.size(); i++) {
+    ants[va[i]] = pb[i];
+    moves[va[i]] = NOMOVE;
+    antSquareAt(va[i])->setAnt(sId[i], sIndex[i], sAnt[i], false);
+    if (sAnt[i] == 0)
+      agents[sId[i]].loc = pb[i];
   }
 }
 
 void State::printAnts(vector<int> &va) {
-  for (int i = 0; i < va.size(); i++) {
+  for (size_t i = 0; i < va.size(); i++) {
     Location &a = ants[va[i]];
     Square &as = grid[a.row][a.col];
     bug << "ant " << i << " " << va[i] << " " << a << " " << as.ant << endl;
@@ -276,11 +345,18 @@ bool State::payoffWin(vector<int> &ants) {
   return true;
 }
 
+// how to check if an ant dies
+// for every ant:
+//   for each enemy in range of ant (using attackradius2):
+//     if (enemies(of ant) in range of ant) >= (enemies(of enemy) in range of enemy) then
+//       the ant is marked dead (actual removal is done after all battles are resolved)
+//       break out of enemy loop
+
 void State::updateDeadInformation(vector<int> &is, vector<int> &dead) {
   //bug << "starting update dead " << is.size() << " " << dead.size() << " " << ants.size()
   //    << " is " << is << " dead " << dead << endl;
   //printAnts(is);
-  for (int i = 0; i < is.size(); i++) {
+  for (size_t i = 0; i < is.size(); i++) {
     Location &a = ants[is[i]];
     Square &as = grid[a.row][a.col];
     if (as.ant == -1) {
@@ -288,13 +364,13 @@ void State::updateDeadInformation(vector<int> &is, vector<int> &dead) {
       return;
     }
   }
-  for (int i = 0; i < is.size(); i++) {
+  for (size_t i = 0; i < is.size(); i++) {
     Location &a = ants[is[i]];
     Square &as = grid[a.row][a.col];
     //bug << "reseting enemies " << i << " " << is[i] << " " << a << endl;
     as.enemies = 0;
   }
-  for (int i = 0; i < is.size(); i++) {
+  for (size_t i = 0; i < is.size(); i++) {
     Location &a = ants[is[i]];
     Square &as = grid[a.row][a.col];
     for (vector<Offset>::iterator o = offsetSelf; o != attackEnd; o++) {
@@ -308,7 +384,7 @@ void State::updateDeadInformation(vector<int> &is, vector<int> &dead) {
       }
     }
   }
-  for (int i = 0; i < is.size(); i++) {
+  for (size_t i = 0; i < is.size(); i++) {
     Location &a = ants[is[i]];
     Square &as = grid[a.row][a.col];
     for (vector<Offset>::iterator o = offsetSelf; o != attackEnd; o++) {
@@ -324,119 +400,6 @@ void State::updateDeadInformation(vector<int> &is, vector<int> &dead) {
     }
   }
   //bug << "finished update dead " << dead << endl;
-}
-
-// outputs move information to the engine
-// void State::makeMove(const Location &a, int d) {
-//   //cout << "o " << (int) loc.row << " " << (int) loc.col << " " << CDIRECTIONS[d] << endl;
-//   Square &as = grid[a.row][a.col];
-//   if (d != -1) {
-//     sim->makeMove(a, d);
-//     Location b = getLocation(a, d);
-//     Square &bs = grid[b.row][b.col];
-//     bs.ant = as.ant;
-//     bs.id = as.id;
-//     as.ant = -1;
-//     as.id = -1;
-//     bs.isUsed = true;
-//   }
-//   else {
-//     as.isUsed = true;
-//   }
-// }
-
-void State::writeMoves() {
-  bug << "starting write moves" << endl;
-  for (int i = 0; i < ants.size(); i++) {
-    Location &a = moveFrom[i];
-    Location &b = ants[i];
-    int d = moves[i];
-    Square &bs = grid[b.row][b.col];
-    if (bs.ant == 0 && d != -1) {
-      bug << "making move " << a << " " << CDIRECTIONS[d] << endl;
-      sim->makeMove(a, d);
-    }
-    else {
-      bug << "not writing " << a << " " << bs.ant << " " << d << endl;
-    }
-  }
-  bug << "finished write moves" << endl;
-}
-
-void State::makeMove(int i, int d) {
-  //cout << "o " << (int) loc.row << " " << (int) loc.col << " " << CDIRECTIONS[d] << endl;
-  Location a = ants[i];
-  Square &as = grid[a.row][a.col];
-  if (d != -1) {
-    Location b = getLocation(a, d);
-    Square &bs = grid[b.row][b.col];
-    if (!bs.isUsed) {
-      bs.ant = as.ant;
-      bs.id = as.id;
-      bs.index = as.index;
-      as.ant = -1;
-      as.id = -1;
-      as.index = -1;
-      bs.isUsed = true;
-      moves[i] = d;
-      ants[i] = b;
-    }
-  }
-  else {
-    as.isUsed = true;
-  }
-}
-
-void State::undoMove(int i) {
-  const Location a = ants[i];
-  Square &as = grid[a.row][a.col];
-  int d = moves[i];
-  if (d != -1) {
-    d = UDIRECTIONS[d];
-    Location b = getLocation(a, d);
-    Square &bs = grid[b.row][b.col];
-    bs.ant = as.ant;
-    bs.id = as.id;
-    bs.index = as.index;
-    as.ant = -1;
-    as.id = -1;
-    as.index = -1;
-    bs.isUsed = false;
-    moves[i] = -1;
-    ants[i] = b;
-  }
-  else {
-    as.isUsed = false;
-  }
-}
-
-// void State::updateEnemyCounts() {
-//   for (int r = 0; r < rows; r++) {
-//     for (int c = 0; c < cols; c++) {
-//       Square &as = grid[r][c];
-//       if (as.ant >= 0) {
-//         int enemies = 0;
-//         for (vector<Offset>::iterator o = offsetFirst; o != attackEnd; o++) {
-//           Square &bs = grid[(*o).r][(*o.c)];
-//           if (bs.ant >= 0 && as.ant != bs.ant)
-//             ++enemies;
-//         }
-//       }
-//     }
-//   }
-// }
-
-// void State::evaluate() {
-// }
-
-bitset<64> State::summarize(const Location &a) {
-  bitset<64> bits;
-  for (int i = 0; i < 64; i++) {
-    Offset &o = offsets[i];
-    Location b = addOffset(a, o);
-    bits[i] = grid[b.row][b.col].isWater;
-  }
-  return bits;
 }
 
 Location State::addOffset(const Location &a, const Offset &o){
@@ -488,44 +451,93 @@ Location State::randomLocation() {
 
 vector<int> State::getDirections(const Location &a, const Location &b) {
   vector<int> directions;
-  if (a.row < b.row)
+  if (a.row < b.row) {
     if (b.row - a.row >= rows / 2)
       directions.push_back(NORTH);
     else
       directions.push_back(SOUTH);
-  else if (a.row > b.row)
+  }
+  else if (a.row > b.row) {
     if (a.row - b.row >= rows / 2)
       directions.push_back(SOUTH);
     else
       directions.push_back(NORTH);
-  if (a.col < b.col)
+  }
+  if (a.col < b.col) {
     if (b.col - a.col >= cols / 2)
       directions.push_back(WEST);
     else
       directions.push_back(EAST);
-  else if (a.col > b.col)
+  }
+  else if (a.col > b.col) {
     if (a.col - b.col >= cols / 2)
       directions.push_back(EAST);
     else
       directions.push_back(WEST);
+  }
   return directions;
 }
 
 void State::markVisible(const Location& a) {
-  if (!squareAt(a).isKnown) {
+  if (!squareAt(a)->isKnown) {
     --nUnknown;
     ++nSeen;
   }
-  if (!squareAt(a).isVisible) {
+  if (!squareAt(a)->isVisible) {
     ++nVisible;
   }
-  squareAt(a).markVisible(turn);
+  squareAt(a)->markVisible(turn);
+}
+
+void State::initDir() {
+  dir = vector< vector<int> >(ants.size(), vector<int>(TDIRECTIONS, kDirichletAlpha));
+}
+
+void State::updateDir(int i) {
+  vector<float> score(TDIRECTIONS, 0.0);
+  for (int d = 0; d < TDIRECTIONS; d++) {
+    // if (tryMove(i, d)) {
+    //   score[d] = computeScore();
+    //   undoMove(i);
+    // }
+  }
+}
+
+int State::pickRandomAnt() {
+  return rand() % ants.size();
+}
+
+bool State::hasAntConsistency() {
+  vector<bool> found(nextId, false);
+  for (int r = 0; r < rows; r++) {
+    for (int c = 0; c < cols; c++) {
+      if (grid[r][c].ant == -1) {
+        assert(grid[r][c].isCleared());
+      }
+      else if (grid[r][c].ant == 0) {
+        assert(grid[r][c].id >= 0);
+        assert(grid[r][c].index >= 0);
+        assert(!found[grid[r][c].id]);
+        found[grid[r][c].id] = true;
+      }
+      else {
+        assert(grid[r][c].index >= 0);
+      }
+    }
+  }
+  return true;
+}
+
+void State::update() {
+        assert(hasAntConsistency());
+  updateVisionInformation();
+  updateInfluenceInformation(10);
+  //initDir();
 }
 
 // This function will update the lastSeen value for any squares currently
 // visible by one of your live ants.
 void State::updateVisionInformation() {
-  bug << "updating vision " << turn << endl;
   for (vector<Location>::iterator a = ants.begin(); a != ants.end(); a++) {
     Square &as = grid[(*a).row][(*a).col];
     if (as.ant == 0) {
@@ -536,12 +548,8 @@ void State::updateVisionInformation() {
         Location b = addOffset(*a, *o);
         Square &bs = grid[b.row][b.col];
         if (bs.ant > 0) {
-          bug << "marking battle " << battle << " "
-              << *a << " " << as.ant << " " << as.battle << " "
-              <<  b << " " << bs.ant << " " << bs.battle << endl;
           if (bs.battle == -1 && as.battle == -1) {
             ++battle;
-            bug << "incremented battle " << battle << endl;
             as.battle = bs.battle = battle;
           }
           else if (as.battle == -1) {
@@ -565,14 +573,12 @@ void State::updateVisionInformation() {
 }
 
 void State::updateInfluenceInformation(int iterations) {
-  bug << "updating influence " << turn << endl;
-  float kCollab = 0.9;
   float kDiffuse = 0.2;
   for (int i = 0; i < iterations; i++) {
     vector< vector< vector<float> > > temp(rows, vector< vector<float> >(cols, vector<float>(kFactors, 0.0)));
     for (int r = 0; r < rows; r++) {
       for (int c = 0; c < cols; c++) {
-        Location a(r,c);
+        Location a(r, c);
         Square &as = grid[a.row][a.col];
         temp[r][c][VISIBLE] = as.inf[VISIBLE];
         vector<float> nsumu(kFactors, 0.0);
@@ -619,42 +625,6 @@ void State::updateInfluenceInformation(int iterations) {
         }
       }
     }
-  }
-  dumpInfluenceInformation();
-}
-
-void State::dumpInfluenceInformation() {
-  return;
-  // dump header
-  if (turn == 0) {
-    bug << "inf rows " << rows << endl;
-    bug << "inf cols " << cols << endl;
-    bug << "inf factors " << kFactors + 1 << endl;
-  }
-  // dump factors
-  bug << "inf turn " << turn << endl;
-  for (int f = 0; f < kFactors; f++) {
-    bug << "inf factor " << f << endl;
-    for (int r = 0; r < rows; r++) {
-      bug << "inf row " << r;
-      for (int c = 0; c < cols; c++) {
-        bug << " " << grid[r][c].inf[f];
-      }
-      bug << endl;
-    }
-  }
-  // dump summary factor
-  bug << "inf factor " << kFactors << endl;
-  float weight = 0.0;
-  for (int f = 0; f < kFactors; f++) {
-    weight += weights[f];
-  }
-  for (int r = 0; r < rows; r++) {
-    bug << "inf row " << r;
-    for (int c = 0; c < cols; c++) {
-      bug << " " << grid[r][c].influence() / weight;
-    }
-    bug << endl;
   }
 }
 
@@ -712,19 +682,30 @@ void State::putDead(int row, int col, int player) {
 
 void State::putAnt(int row, int col, int player) {
   updatePlayers(player);
-  grid[row][col].ant = player;
-  grid[row][col].index = ants.size();
-  ants.push_back(Location(row, col));
-  moves.push_back(-1);
-  moveFrom.push_back(Location(row, col));
+  Location a(row, col);
+  Square &as = grid[row][col];
+  as.ant = player;
+  as.index = ants.size();
+  assert(as.isUsed == false);
+  moveFrom.push_back(a);
+  moves.push_back(NOMOVE);
+  ants.push_back(a);
+  if (as.ant == 0) {
+    if (as.id == -1) {
+      as.id = nextId;
+      agents.push_back(Agent(as.id, a));
+      nextId++;
+    }
+    else {
+      assert(agents[as.id].loc == a);
+    }
+  }
 }
 
 //input function
 istream& operator>>(istream &is, State &state) {
-  state.bug << "reading from istream" << endl;
   int row, col, player;
   string inputType, junk;
-
   //finds out which turn it is
   while(is >> inputType) {
     if(inputType == "end") {
@@ -739,7 +720,6 @@ istream& operator>>(istream &is, State &state) {
       getline(is, junk);
     }
   }
-
   if(state.turn == 0) {
     //reads game parameters
     while(is >> inputType) {
@@ -818,39 +798,7 @@ istream& operator>>(istream &is, State &state) {
       }
     }
   }
-  state.bug << "finished reading" << endl;
   return is;
-}
-
-Route::Route(const Location& start, const Location& end, map<Location,Location> &p)
-    : start(start), end(end), distance(0) {
-  for (Location c = end; c != start; c = p[c]) {
-    steps.push_front(c);
-    distance++;
-  }
-  steps.push_front(start);
-  distance++;
-};
-
-void Route::flip() {
-  Location temp = start;
-  start = end;
-  end = temp;
-  reverse(steps.begin(), steps.end());
-}
-
-bool operator<(const Route &a, const Route &b) {
-  return a.distance < b.distance;
-}
-
-bool operator==(const Route &a, const Route &b) {
-  return a.distance == b.distance
-      && a.start == b.start
-      && a.end == b.end;
-}
-
-ostream& operator<<(ostream& os, const Route &r) {
-  os << r.start << " " << r.end << " " << r.steps.size();
 }
 
 ostream& operator<<(ostream& os, const Square &square) {
@@ -866,6 +814,7 @@ ostream& operator<<(ostream& os, const Square &square) {
     os << "," << square.ant;
   if (square.hillPlayer >= 0)
     os << "," << square.hillPlayer;
+  return os;
 }
 
 bool operator<(const Location &a, const Location &b) {
