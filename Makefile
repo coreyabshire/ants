@@ -1,6 +1,6 @@
 CC=g++
 CFLAGS=-c -Wall -O2 #-O3 -funroll-loops -c
-LDFLAGS=-lm -O2
+LDFLAGS=-lm #-O2
 SOURCES=MyBot.cc bot.cc state.cc
 HEADERS=bot.h state.h
 OBJECTS=$(addsuffix .o, $(basename ${SOURCES}))
@@ -16,10 +16,10 @@ VIZSOURCES=VizBot.cc bot.cc state.cc
 VIZOBJECTS=$(addsuffix .o, $(basename ${VIZSOURCES}))
 VIZEXECUTABLE=VizBot
 
-UTILLDFLAGS=-lm -lGL -lGLU -lglut #-O2
-UTILSOURCES=payoff.cc bot.cc state.cc
+UTILLDFLAGS=-lm -lGL -lGLU -lglut -O2
+UTILSOURCES=t3.cc bot.cc state.cc
 UTILOBJECTS=$(addsuffix .o, $(basename ${UTILSOURCES}))
-UTILEXECUTABLE=payoff
+UTILEXECUTABLE=t3
 
 #Uncomment the following to enable debugging
 CFLAGS+=-g -DDEBUG 

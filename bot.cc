@@ -158,6 +158,10 @@ bool Bot::nextPermutation(vector<int> &moves) {
   return false;
 }
 
+// bool Bot::suggestMoves(vector<int> &ants, vector<int> &moves, vector<float> weights) {
+  
+// }
+
 ostream& operator<<(ostream& os, const vector<int> &a) {
   for (vector<int>::const_iterator i = a.begin(); i != a.end(); i++)
     os << (*i) << " ";

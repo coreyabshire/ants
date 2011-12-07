@@ -211,9 +211,6 @@ void State::writeMoves() {
 
 void State::makeMove(int i, int d) {
   Location a = ants[i];
-  if (a.row == 10 && a.col == 82 && turn == 45) {
-    bug << "here it is" << endl;
-  }
   if (d != NOMOVE) {
     Location b = getLocation(a, d);
     assert(grid[a.row][a.col].isUsed == false);
@@ -551,8 +548,6 @@ void State::update() {
   //initDir();
 }
 
-// This function will update the lastSeen value for any squares currently
-// visible by one of your live ants.
 void State::updateVisionInformation() {
   for (vector<Location>::iterator a = ants.begin(); a != ants.end(); a++) {
     Square &as = grid[(*a).row][(*a).col];
