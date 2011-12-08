@@ -14,6 +14,10 @@
 
 using namespace std;
 
+typedef vector<int> v1i;
+typedef vector<v1i> v2i;
+typedef vector<v2i> v3i;
+
 // constants
 enum { NOMOVE, NORTH, EAST, SOUTH, WEST };
 const int TDIRECTIONS = 5;
@@ -22,16 +26,19 @@ const int DIRECTIONS[TDIRECTIONS][2]  = { {0, 0}, {-1, 0}, {0,  1}, { 1, 0}, {0,
 const int UDIRECTIONS[TDIRECTIONS] = { NOMOVE, SOUTH, WEST, NORTH, EAST };
 const int kDirichletAlpha = 1;
 
-enum { VISIBLE, LAND, FOOD, TARGET, UNKNOWN, ENEMY };
-const int kFactors = 6;
-const float weights[kFactors] = {0.0, 0.0, 1.0, 1.1, 0.2, 1.0};
-const float decay[kFactors] = {0.0, 0.1, 0.2, 0.1, 0.25, 0.0};
-const float loss[kFactors] = {0.9, 1.0, 1.0, 1.0, 1.0, 1.0};
+enum { VISIBLE, LAND, FOOD, TARGET, UNKNOWN, ENEMY, FRIEND };
+const int kFactors = 7;
+const float weights[kFactors] = {0.0, 0.0, 0.8, 1.0, 0.2, 0.1, 0.0};
+const float decay[kFactors] =   {0.0, 0.1, 0.3, 0.4, 0.2, 0.2, 0.1};
+const float loss[kFactors] =    {0.9, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
+
+enum { NORMAL, ATTACK, EVADE };
+const int kModes = 3;
 
 // A square in the grid.
 class Square {
  public:
-  bool isVisible, isWater, isHill, isFood, isKnown, isFood2, isHill2;
+  bool isVisible, isWater, isHill, isFood, isKnown, isFood2, isHill2, isWarzone;
   bool isLefty, isStraight, isUsed;
   int direction;
   int id, index;
@@ -101,8 +108,6 @@ class Sim {
   virtual void go();
 };
 
-enum { ATTACK, EVADE };
-
 class Agent {
  public:
   int id;
@@ -147,12 +152,12 @@ class State {
 
   vector< vector<Square> > grid;
   vector< vector<double> > distanceGrid;
-  vector< vector<int> > distance2Grid;
+  v2i distance2Grid;
 
   vector<Location> ants, hills, food;
   vector<Location> moveFrom;
-  vector<int> moves;
-  vector< vector<int> > dir;
+  v1i moves;
+  v2i dir;
 
   Timer timer;
   Bug bug;
@@ -183,7 +188,7 @@ class State {
   Location getLocation(const Location &loc, const Location &off);
   Location getLocationNoWrap(const Location &loc, int direction);
   Location randomLocation();
-  vector<int> getDirections(const Location &a, const Location &b);
+  v1i getDirections(const Location &a, const Location &b);
   void markVisible(const Location& a);
   void calcOffsets(int radius2, vector<Location> &offsets);
   Location addOffset(const Location &a, const Offset &o);
@@ -200,14 +205,17 @@ class State {
   void clearAnts(vector<int> &va);
 
   void update();
-  void updateVisionInformation();
-  void updateInfluenceInformation(int iterations);
+  void updateVision();
+  void updateInfluence(int iterations);
+  void updateDead(v1i &is, v1i &dead);
   void initDir();
   void updateDir(int i);
   int pickRandomAnt();
-  void updateDeadInformation(vector<int> &is, vector<int> &dead);
-  bool payoffWin(vector<int> &ants);
-  int assertAllAnts(vector<int> &is);
+  bool payoffWin(v1i &ants);
+  int assertAllAnts(v1i &is);
+  void adjustEnemyCount(const Location &a, int i);
+  int countEnemies(const Location &a);
+  int assertEnemyCountsCorrect();
 
   Square *antSquareAt(int i) { return squareAt(ants[i]); }
   Square *squareAt(Location a) { return &(grid[a.row][a.col]); }

@@ -16,7 +16,7 @@ void prmoves(vector<int> m) {
 
 bool payoffWin(State &state, vector<int> &ants) {
   vector<int> dead(state.players, 0);
-  state.updateDeadInformation(ants, dead);
+  state.updateDead(ants, dead);
   int d = 0;
   for (int i = 0; i < state.players; i++) {
     //    cout << dead[i];
@@ -34,11 +34,9 @@ int main(int argc, char **argv) {
   Bot bot(100,100);
   State &state = bot.state;
   state.putAnt(2,1,1);
-  state.putAnt(1,2,1);
-  state.putAnt(1,3,1);
   state.putAnt(3,4,0);
   state.putAnt(4,3,0);
-  state.putAnt(4,4,0);
+  state.update();
   vector<int> ants;
   for (size_t i = 0; i < state.ants.size(); i++)
     ants.push_back(i);

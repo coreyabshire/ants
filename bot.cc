@@ -1,40 +1,5 @@
 #include "bot.h"
 
-int Bot::bestDirection(const Location &a) {
-  Square &as = state.grid[a.row][a.col];
-  int bestd = -1;
-  float bestf = as.influence();
-  for (int d = 1; d < TDIRECTIONS; d++) {
-    Location b = state.getLocation(a, d);
-    Square &bs = state.grid[b.row][b.col];
-    if (!bs.isUsed && (bs.bad == 0 || bs.good > (bs.bad + 1))) {
-      float f = bs.influence();
-      if (f > bestf) {
-        bestd = d;
-        bestf = f;
-      }
-    }
-  }
-  return bestd;
-}
-
-int Bot::bestEvadeDirection(const Location &a) {
-  int bestd = NOMOVE;
-  float bestf = 999;//as.influence();
-  for (int d = 1; d < TDIRECTIONS; d++) {
-    Location b = state.getLocation(a, d);
-    Square &bs = state.grid[b.row][b.col];
-    if (!bs.isUsed && !bs.isWater) {
-      float f = bs.inf[ENEMY];
-      if (f < bestf) {
-        bestd = d;
-        bestf = f;
-      }
-    }
-  }
-  return bestd;
-}
-
 void Bot::markMyHillsUsed() {
   for (vector<Location>::iterator a = state.hills.begin(); a != state.hills.end(); a++) {
     Square &as = state.grid[(*a).row][(*a).col];
@@ -42,49 +7,54 @@ void Bot::markMyHillsUsed() {
   }
 }
 
-bool Bot::updateAgent(Agent &agent) {
-  Location a = agent.loc;
-  Square &as = state.grid[a.row][a.col];
-  assert(as.isUsed == false);
-  int i = as.index;
+bool Bot::updateAgent(int i, int mode) {
   assert(i != -1);
-  switch (agent.mode) {
-    case ATTACK:
-      //      if (as.battle != -1 && as.inf[ENEMY] > 0.3) {
-      //  agent.mode = EVADE;
-      //  return false;
-      //}
-      break;
-    case EVADE:
-      if (as.battle == -1 || as.inf[ENEMY] < 0.3) {
-        agent.mode = ATTACK;
-        return false;
-      }
-      break;
-    default:
-      state.bug << "INVALID MODE: " << agent.mode << endl;
-      break;
-  }
-  
+  Location a = state.ants[i];
+  Square &as = state.grid[a.row][a.col];
+  state.bug << "update agent " << i << " " << as.ant << " " << mode << endl;
+  assert(as.isUsed == false);
   int bestd = NOMOVE;
-  float bestf = as.influence();
-  for (int d = 1; d < TDIRECTIONS; d++) {
+  float bestf = -999.0;
+  for (int d = 0; d < TDIRECTIONS; d++) {
     Location b = state.getLocation(a, d);
     Square &bs = state.grid[b.row][b.col];
-    if (!bs.isWater && !bs.isFood && !bs.isUsed && (bs.bad == 0 || bs.good > (bs.bad + 1))) {
-      float f = bs.influence();
-      if (f > bestf) {
-        bestd = d;
-        bestf = f;
-      }
+    switch (mode) {
+      case ATTACK:
+        if (!bs.isWater && !bs.isFood && !bs.isUsed) {
+          float f = bs.ant == 0 ? bs.inf[ENEMY] : bs.inf[FRIEND];
+          if (f > bestf) {
+            bestd = d;
+            bestf = f;
+          }
+        }
+        break;
+      case EVADE:
+        if (!bs.isWater && !bs.isFood && !bs.isUsed) {
+          float f = bs.ant == 0 ? bs.inf[ENEMY] : bs.inf[FRIEND];
+          f *= -1.0;
+          if (f > bestf) {
+            bestd = d;
+            bestf = f;
+          }
+        }
+        break;
+      default:
+        if (!bs.isWater && !bs.isFood && !bs.isUsed) {
+          float f = bs.influence();
+          if (f > bestf) {
+            bestd = d;
+            bestf = f;
+          }
+        }
+        break;
     }
   }
-
+  state.bug << "best move " << a << " " << CDIRECTIONS[bestd] << endl;
   if (bestd != NOMOVE) {
     Location b = state.getLocation(a, bestd);
     Square &bs = state.grid[b.row][b.col];
     if (!bs.isUsed) {
-      if (bs.ant != 0) {
+      if (bs.ant == -1) {
         assert(bs.isCleared());
         state.makeMove(i, bestd);
         return true;
@@ -105,24 +75,16 @@ bool Bot::updateAgent(Agent &agent) {
 }
 
 // assign a move to each ant
-void Bot::updateAgents(vector<int> &ants) {
-  deque<int> q;
-  for (size_t i = 0; i < ants.size(); i++) {
-    Location &a = state.ants[ants[i]];
-    if (state.grid[a.row][a.col].ant == 0)
-      q.push_back(ants[i]);
-  }
+void Bot::updateAgents(vector<int> &ants, int mode=NORMAL) {
+  deque<int> q(ants.begin(), ants.end());
   int moved = 0, remaining = 0;
   do {
     moved = 0;
     remaining = q.size();
     while (!q.empty() && remaining-- > 0) {
       int i = q.front();
-      Location &a = state.ants[i];
-      Square &as = state.grid[a.row][a.col];
-      Agent &agent = state.agents[as.id];
       q.pop_front();
-      if (updateAgent(agent))
+      if (updateAgent(i, mode))
         moved++;
       else
         q.push_back(i);
@@ -134,10 +96,12 @@ void Bot::classifyAnts(vector< vector<int> > &battle, vector<int> &normal) {
   for (size_t i = 0; i < state.ants.size(); i++) {
     Location &a = state.ants[i];
     Square &as = state.grid[a.row][a.col];
-    if (as.battle != -1)
+    if (as.battle != -1) {
       battle[as.battle].push_back(i);
-    else
+    }
+    else if (as.ant == 0) {
       normal.push_back(i);
+    }
   }
 }
 
@@ -158,33 +122,34 @@ bool Bot::nextPermutation(vector<int> &moves) {
   return false;
 }
 
-// bool Bot::suggestMoves(vector<int> &ants, vector<int> &moves, vector<float> weights) {
-  
-// }
-
 ostream& operator<<(ostream& os, const vector<int> &a) {
   for (vector<int>::const_iterator i = a.begin(); i != a.end(); i++)
     os << (*i) << " ";
   return os;
 }
 
-bool Bot::payoffWin(vector<int> &ants) {
-  vector<int> dead(state.players, 0);
-  state.updateDeadInformation(ants, dead);
-  int d = 0;
-  for (int i = 0; i < state.players; i++) {
-    d += dead[i];
-  }
-  int u = d - (2*dead[0]);
-  for (int i = 1; i < state.players; i++) {
-    if ((d - (2*dead[i])) >= u)
-      return false;
-  }
-  return true;
+void Bot::payoffCell(v1i &ants, v1i &cell) {
+  v1i dead(state.players, 0);
+  state.updateDead(ants, dead);
+  cell = dead;
 }
 
-void Bot::makeAttackMoves(vector<int> &ants) {
-  vector<int> ma, ea;
+void Bot::printPayoffMatrix(v3i &pm) {
+  state.bug << "payoff matrix" << endl;
+  for (size_t i = 0; i < (size_t) kModes; i++) {
+    state.bug << "payoff ";
+    for (size_t j = 0; j < (size_t) kModes; j++) {
+      state.bug << ((j == 0) ? "" : " | ");
+      for (size_t k = 0; k < (size_t) state.players; k++) {
+        state.bug << ((k == 0) ? "" : ",") << pm[i][j][k];
+      }
+    }
+    state.bug << endl;
+  }
+}
+
+void Bot::makeAttackMoves(v1i &ants) {
+  v1i ma, ea;
   state.bug << "calculating attack moves " << ants << endl;
   state.printAnts(ants);
   for (size_t i = 0; i < ants.size(); i++) {
@@ -198,40 +163,44 @@ void Bot::makeAttackMoves(vector<int> &ants) {
   }
   state.bug << "my ants " << ma << endl;
   state.bug << "enemy ants " << ea << endl;
-  vector<int> mm(ma.size(), NOMOVE), em(ea.size(), NOMOVE);
-  vector<int> best;
+  int best = 0;
   int maxu = -1;
-  do {
-    if (state.tryMoves(ma, mm)) {
-      //state.bug << "trying my moves " << mm << endl;
-      //state.printAnts(ants);
-      int u = 0;//utility(ants);
-      do {
-        //state.printAnts(ants);
-        if (state.tryMoves(ea, em)) {
-          //state.bug << "trying enemy moves " << em << endl;
-          //state.printAnts(ants);
-          if (payoffWin(ants)) {
-            ++u;
-          }
-          state.undoMoves(ea);
+  int u = 0;
+  v3i pm(kModes, v2i(kModes, v1i(state.players, 0)));
+  for (size_t i = 0; i < (size_t)kModes; i++) {
+    updateAgents(ma, i);
+    state.bug << "My Ants: " << i << endl;
+    state.printAnts(ma);
+    for (size_t j = 0; j < (size_t)kModes; j++) {
+      state.bug << "Enemy Ants: " << j << endl;
+      state.printAnts(ea);
+      updateAgents(ea, j);
+      v1i &cell = pm[i][j];
+      payoffCell(ants, cell);
+      int killed = 0;
+      for (int i = 1; i < state.players; i++)
+        killed += cell[i];
+      int lost = cell[0];
+      if (lost) {
+        if (killed > lost) {
+          u += 2;
         }
-      } while (nextPermutation(em));
-      if (u > maxu) {
-        maxu = u;
-        best = mm;
+        else {
+          u -= 1;
+        }
       }
-      //state.bug << "undoing my moves " << mm << endl;
-      //state.printAnts(ants);
-      state.undoMoves(ma);
-      //state.printAnts(ants);
+      state.undoMoves(ea);
     }
-  } while (nextPermutation(mm));
+    if (u > maxu) {
+      maxu = u;
+      best = i;
+    }
+    state.undoMoves(ma);
+  }
+  printPayoffMatrix(pm);
   if (maxu > -1) {
     state.bug << "found best moves " << " " << maxu << " " << best << endl;
-    assert(state.tryMoves(ma, best));
-    // for (size_t i = 0; i < ma.size(); i++)
-    //   state.makeMove(ma[i], best[i]);
+    updateAgents(ma, best);
   }
 }
 

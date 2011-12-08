@@ -13,7 +13,7 @@
 
 using namespace std;
 
-const int kMult = 5;
+const int kMult = 50;
 const unsigned int kDelay = 1000/50;
 Bot *gbot;
 Timer stopwatch;
@@ -24,14 +24,14 @@ vector<int> antCounts;
 vector<int> foodCounts;
 vector<double> turnTimes;
 bool needEndTurn = false;
-bool factor[kFactors] = { 0, 0, 1, 1, 1, 1 };
+bool factor[kFactors] = { 0, 0, 1, 1, 1, 1, 1 };
 int factorsOn = 0;
 float weight = 0.0;
 bool weightOn = false;
 int mouseR, mouseC;
 bool mouseOver;
 string fnames[kFactors] = {
-  "VISIBLE", "LAND", "FOOD", "TARGET", "UNKNOWN", "ENEMY"
+  "VISIBLE", "LAND", "FOOD", "TARGET", "UNKNOWN", "ENEMY", "FRIEND"
 };
 
 int antcolors[10][3] = {
@@ -50,8 +50,6 @@ int antcolors[10][3] = {
 void timer(int value) {
   Bot &bot = *gbot;
   if (cin >> bot.state) {
-    bot.state.updateVisionInformation();
-    bot.state.updateInfluenceInformation(20);
     grids.push_back(bot.state.grid);
     antCounts.push_back(bot.state.ants.size());
     foodCounts.push_back(bot.state.food.size());
@@ -171,14 +169,20 @@ void text(const int x, const int y, const char *s) {
 
 float influence(const Square& s) {
   float inf = 0.0;
+  int c = 0;
+  int onef = 0;
   for (int f = 0; f < kFactors; f++) {
     if (factor[f]) {
       inf += s.inf[f] * weights[f];
+      c++;
+      onef = f;
     }
   }
   if (weight > 0.0) {
     inf /= weight;
   }
+  if (c == 1)
+    inf = s.inf[onef];
   inf *= 0.7;
   return inf;
 }

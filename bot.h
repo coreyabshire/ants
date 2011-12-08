@@ -19,18 +19,19 @@ class Bot {
   void endTurn();    //indicates to the engine that it has made its moves
 
 
-  void classifyAnts(vector< vector<int> > &battle, vector<int> &normal);
+  void classifyAnts(v2i &battle, v1i &normal);
   void markMyHillsUsed();
-  void updateAgents(vector<int> &ants);
-  bool updateAgent(Agent &agent);
+  void updateAgents(v1i &ants, int mode);
+  bool updateAgent(int i, int mode);
   int bestDirection(const Location &a);
   int bestEvadeDirection(const Location &a);
-  void makeAttackMoves(vector<int> &ants);
-  bool nextPermutation(vector<int> &moves);
-  bool payoffWin(vector<int> &ants);
+  void makeAttackMoves(v1i &ants);
+  bool nextPermutation(v1i &moves);
+  void payoffCell(v1i &ants, v1i &cell);
+  void printPayoffMatrix(v3i &pm);
 };
 
-ostream& operator<<(ostream& os, const vector<int> &a);
+ostream& operator<<(ostream& os, const v1i &a);
 
 
 #endif //BOT_H_

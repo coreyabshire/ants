@@ -115,13 +115,12 @@ TEST(State, MoveAntTo) {
   EXPECT_EQ(0, state.grid[1][2].ant);
 }
 
-TEST(State, UpdateInfluenceInformation) {
+TEST(State, Update) {
   State state(10, 10);
   Location a(1, 1), b(1, 2);
   state.putAnt(1, 1, 0);
   state.putFood(4, 4);
-  state.updateVisionInformation();
-  state.updateInfluenceInformation(1000);
+  state.update();
 }
 
 // TEST(State, DistanceSpeed) {
