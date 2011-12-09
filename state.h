@@ -28,11 +28,10 @@ const int kDirichletAlpha = 1;
 
 enum { VISIBLE, LAND, FOOD, TARGET, UNKNOWN, ENEMY, FRIEND };
 const int kFactors = 7;
-const float weights[kFactors] = {0.0, 0.0, 0.8, 1.0, 0.2, 0.1, 0.0};
-const float decay[kFactors] =   {0.0, 0.1, 0.3, 0.4, 0.2, 0.2, 0.1};
-const float loss[kFactors] =    {0.9, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
+const int kMaxPlayers = 10;
 
 enum { NORMAL, ATTACK, EVADE };
+enum { SAFE=0, KILL=1, DIE=2 };
 const int kModes = 3;
 
 // A square in the grid.
@@ -49,11 +48,15 @@ class Square {
   int battle;
   vector<float> inf;
   vector<int> deadAnts;
+  int sumAttacked;
+  vector<int> attacked;
+  vector<int> fighting;
+  vector<int> status;
 
-  Square(int players);
+  Square();
   void reset();
   void markVisible(int turn);
-  float influence();
+  //  float influence();
   void setAnt(int sid, int sindex, int sant, bool sisUsed);
   bool isAnt();
   void clearAnt();
@@ -99,6 +102,8 @@ struct Offset {
 };
 
 bool operator<(const Offset &a, const Offset &b);
+bool operator==(const Offset &a, const Offset &b);
+bool operator!=(const Offset &a, const Offset &b);
 ostream& operator<<(ostream& os, const Offset &o);
 
 class Sim {
@@ -141,11 +146,17 @@ class State {
   double attackradius, spawnradius, battleradius, viewradius;
   vector<Offset> offsets;
   vector<Offset>::iterator offsetSelf, offsetFirst, attackEnd, spawnEnd, battleEnd, viewEnd;
+  vector<Offset> aoneOffsets;
+  vector< vector<Offset> > aEnterOffsets;
+  vector< vector<Offset> > aLeaveOffsets;
   vector<double> scores;
   bool gameover;
   int64_t seed;
   int nextId;
   int battle;
+  vector<float> weights;
+  vector<float> decay;
+  vector<float> loss;
 
   Sim defaultSim;
   Sim *sim;
@@ -204,6 +215,7 @@ class State {
 
   void clearAnts(vector<int> &va);
 
+  void setInfluenceParameter(int f, float w, float d, float l);
   void update();
   void updateVision();
   void updateInfluence(int iterations);

@@ -13,7 +13,7 @@
 
 using namespace std;
 
-const int kMult = 50;
+const int kMult = 5;
 const unsigned int kDelay = 1000/50;
 Bot *gbot;
 Timer stopwatch;
@@ -68,7 +68,7 @@ void refreshWeights() {
   for (int fi = 0; fi < kFactors; fi++) {
     if (factor[fi]) {
       ++factorsOn;
-      weight += weights[fi];
+      weight += gbot->state.weights[fi];
     }
   }
   weightOn = factorsOn > 1;
@@ -173,7 +173,7 @@ float influence(const Square& s) {
   int onef = 0;
   for (int f = 0; f < kFactors; f++) {
     if (factor[f]) {
-      inf += s.inf[f] * weights[f];
+      inf += s.inf[f] * gbot->state.weights[f];
       c++;
       onef = f;
     }
@@ -196,7 +196,7 @@ void info() {
   os << "Time: " << setiosflags(ios_base::fixed) << setprecision(7) << setw(9) << turnTimes[turn] << endl;
   for (int f = 0; f < kFactors; f++) {
     if (factor[f]) {
-      os << f << ": " << fnames[f] << " x " << weights[f] << endl;
+      os << f << ": " << fnames[f] << " x " << gbot->state.weights[f] << endl;
     }
   }
   if (mouseOver) {

@@ -39,8 +39,10 @@ bool Bot::updateAgent(int i, int mode) {
         }
         break;
       default:
-        if (!bs.isWater && !bs.isFood && !bs.isUsed) {
-          float f = bs.influence();
+        if (!bs.isWater && !bs.isFood && !bs.isUsed && bs.status[as.ant] == SAFE) {
+          float f = 0.0;
+          for (int i = 0; i < kFactors; i++)
+            f += bs.inf[i] * state.weights[i];
           if (f > bestf) {
             bestd = d;
             bestf = f;
@@ -96,12 +98,14 @@ void Bot::classifyAnts(vector< vector<int> > &battle, vector<int> &normal) {
   for (size_t i = 0; i < state.ants.size(); i++) {
     Location &a = state.ants[i];
     Square &as = state.grid[a.row][a.col];
-    if (as.battle != -1) {
-      battle[as.battle].push_back(i);
-    }
-    else if (as.ant == 0) {
+    // if (as.battle != -1) {
+    //   battle[as.battle].push_back(i);
+    // }
+    // else if (as.ant == 0) {
+    //   normal.push_back(i);
+    // }
+    if (as.ant == 0)
       normal.push_back(i);
-    }
   }
 }
 
@@ -216,8 +220,8 @@ void Bot::makeMoves() {
   vector<int> normal;
   classifyAnts(battle, normal);
   //markMyHillsUsed();
-  for (size_t i = 0; i < battle.size(); i++)
-    makeAttackMoves(battle[i]);
+  // for (size_t i = 0; i < battle.size(); i++)
+  //   makeAttackMoves(battle[i]);
   if (!normal.empty())
     updateAgents(normal);
   state.writeMoves();

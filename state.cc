@@ -1,6 +1,6 @@
 #include "state.h"
 
-Square::Square(int players) : inf(kFactors, 0.0) {
+Square::Square() : inf(kFactors, 0.0) {
   isVisible = isWater = isHill = isFood = isKnown = isWarzone = 0;
   good = goodmove = bad = badmove = 0;
   enemies = 0;
@@ -14,6 +14,10 @@ Square::Square(int players) : inf(kFactors, 0.0) {
   ant = hillPlayer = hillPlayer2 = -1;
   ant2 = -1;
   id2 = -1;
+  sumAttacked = 0;
+  attacked = v1i(kMaxPlayers, 0);
+  fighting = v1i(kMaxPlayers, 0);
+  status = v1i(kMaxPlayers, 0);
 }
 
 //resets the information for the square except water information
@@ -26,10 +30,18 @@ void Square::reset() {
   direction = NOMOVE;
   battle = -1;
   ant = hillPlayer2 = ant2 = -1;
-  inf[VISIBLE] *= loss[VISIBLE];
+  // inf[VISIBLE] *= loss[VISIBLE];
   //for (vector<int>::iterator i = points.begin(); i != points.end(); i++)
   //  *i = 0;
   deadAnts.clear();
+  if (sumAttacked > 0) {
+    sumAttacked = 0;
+    for (int i = 0; i < kMaxPlayers; i++) {
+      attacked[i] = 0;
+      fighting[i] = 0;
+      status[i] = 0;
+    }
+  }
 }
 
 void Square::markVisible(int turn) {
@@ -81,13 +93,6 @@ void Square::clearAnt() {
   isUsed = false;
 }
 
-float Square::influence() {
-  float sum = 0.0;
-  for (int i = 0; i < kFactors; i++)
-    sum += inf[i] * weights[i];
-  return sum;
-}
-
 // constructor
 State::State() : turn(0), players(2), gameover(0), nextId(0) {
   bug.open("./debug.txt");
@@ -117,18 +122,39 @@ State::State(int rows, int cols) : rows(rows), cols(cols), turn(0), players(2), 
   setup();
 }    
 
+void State::setInfluenceParameter(int f, float w, float d, float l) {
+  weights[f] = w;
+  decay[f] = d;
+  loss[f] = l;
+}
+
 // sets the state up
 void State::setup() {
   nSquares = nUnknown = rows * cols;
   nSeen = nVisible = 0;
   battle = -1;
   nextAntId = 0;
-  grid = vector< vector<Square> >(rows, vector<Square>(cols, Square(players)));
+  grid = vector< vector<Square> >(rows, vector<Square>(cols, Square()));
   int n = max(rows, cols);
   distance2Grid = v2i(n, v1i(n, 0));
   distanceGrid = vector< vector<double> >(n, vector<double>(n, 0.0));
   battleradius = (attackradius + 2.0);
   battleradius2 = round(battleradius * battleradius);
+  // weights enum { VISIBLE, LAND, FOOD, TARGET, UNKNOWN, ENEMY, FRIEND };
+  weights = vector<float>(kFactors, 0.0);
+  decay = vector<float>(kFactors, 0.0);
+  loss = vector<float>(kFactors, 0.0);
+  setInfluenceParameter(VISIBLE,  0.00,  0.00,  0.90);
+  setInfluenceParameter(LAND,     0.00,  0.10,  1.00);
+  setInfluenceParameter(FOOD,     0.80,  0.12,  1.00);
+  setInfluenceParameter(TARGET,   1.00,  0.20,  1.00);
+  setInfluenceParameter(UNKNOWN,  0.50,  0.10,  1.00);
+  setInfluenceParameter(ENEMY,    0.10,  0.01,  1.00);
+  setInfluenceParameter(FRIEND,   0.00,  0.01,  1.00);
+// [kFactors] = {0.0, 0.0, 0.8, 1.0, 0.2, 0.1, 0.0};
+// [kFactors] =   {0.0, 0.1, 0.2, 0.25, 0.1, 0.1, 0.1};
+// [kFactors] =    {0.9, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
+
   // build distance lookup tables
   for (int r = 0; r < n; r++) {
     for (int c = 0; c < n; c++) {
@@ -157,6 +183,22 @@ void State::setup() {
   battleEnd = offset;
   for (; (offset < offsets.end()) && (*offset).d2 <= viewradius2; offset++);
   viewEnd = offset;
+
+  // special attack offsets
+  for (vector<Offset>::iterator oi = offsetSelf; oi < attackEnd; oi++) {
+    Offset &o = *oi;
+    for (int d = 0; d < TDIRECTIONS; d++) {
+      int r = o.r + DIRECTIONS[d][0];
+      int c = o.c + DIRECTIONS[d][1];
+      int ar = abs(r);
+      int ac = abs(c);
+      Offset b(distanceGrid[ar][ac], distance2Grid[ar][ac], r, c);
+      if (find(aoneOffsets.begin(), aoneOffsets.end(), b) == aoneOffsets.end()) {
+        aoneOffsets.push_back(b);
+      }
+    }
+  }
+  //sort(aoneOffsets.begin(), aoneOffsets.end());
 }
 
 // resets all non-water squares to land and clears the bots ant vector
@@ -564,6 +606,40 @@ void State::updateVision() {
       }
     }
   }
+  for (vector<Location>::iterator a = ants.begin(); a != ants.end(); a++) {
+    Square &as = grid[(*a).row][(*a).col];
+    if (as.battle >= 0) {
+      for (vector<Offset>::iterator o = aoneOffsets.begin(); o != aoneOffsets.end(); o++) {
+        Location b = addOffset(*a, *o);
+        Square &bs = grid[b.row][b.col];
+        bs.attacked[as.ant]++;
+        bs.sumAttacked++;
+        for (int i = 0; i < players; i++)
+          if (i != as.ant)
+            (bs.fighting[i])++;
+      }
+    }
+  }
+  for (int r = 0; r < rows; r++) {
+    for (int c = 0; c < cols; c++) {
+      Square &as = grid[r][c];
+      if (as.isWarzone && as.sumAttacked > 0) {
+        for (int i = 0; i < players; i++) {
+          int best = as.sumAttacked;
+          for (int j = 0; j < players; j++)
+            if (j != i)
+              if (as.fighting[j] < best)
+                best = as.fighting[j];
+          if (as.fighting[i] < best)
+            as.status[i] = SAFE;
+          else if (as.fighting[i] == best)
+            as.status[i] = KILL;
+          else
+            as.status[i] = DIE;
+        }
+      }
+    }
+  }
 }
 
 void State::updateDead(v1i &is, v1i &dead) {
@@ -585,9 +661,8 @@ void State::updateDead(v1i &is, v1i &dead) {
 }
 
 void State::updateInfluence(int iterations) {
-  float kDiffuse = 0.2;
+  vector< vector< vector<float> > > temp(rows, vector< vector<float> >(cols, vector<float>(kFactors, 0.0)));
   for (int i = 0; i < iterations; i++) {
-    vector< vector< vector<float> > > temp(rows, vector< vector<float> >(cols, vector<float>(kFactors, 0.0)));
     for (int r = 0; r < rows; r++) {
       for (int c = 0; c < cols; c++) {
         Location a(r, c);
@@ -606,7 +681,7 @@ void State::updateInfluence(int iterations) {
             k = 0.0;
           }
           else if (as.isFood) {
-            k = (f == FOOD) ? 1.0 : as.inf[f] + (kDiffuse * nsumu[f]);
+            k = (f == FOOD) ? 1.0 : as.inf[f] + (decay[f] * nsumu[f]);
           }
           else if (as.hillPlayer == 0) {
             k = 0.0;
@@ -614,21 +689,21 @@ void State::updateInfluence(int iterations) {
               k = 1.0;
           }
           else if (as.hillPlayer > 0) {
-            k = (f == TARGET) ? 1.0 : as.inf[f] + (kDiffuse * nsumu[f]);
+            k = (f == TARGET) ? 1.0 : as.inf[f] + (decay[f] * nsumu[f]);
             if (as.ant > 0 && f == ENEMY)
               k = 1.0;
           }
           else if (as.ant == 0) {
-            k = (f == FRIEND) ? 1.0 : 0.1 * (as.inf[f] + (kDiffuse * nsumu[f]));
+            k = (f == FRIEND) ? 1.0 : 1.0 * (as.inf[f] + (decay[f] * nsumu[f]));
           }
           else if (as.ant > 0) {
-            k = (f == ENEMY) ? 1.0 : 1.2 * (as.inf[f] + (kDiffuse * nsumu[f]));
+            k = (f == ENEMY) ? 1.0 : 1.0 * (as.inf[f] + (decay[f] * nsumu[f]));
           }
           else if (!as.isKnown) {
-            k = (f == UNKNOWN) ? 1.0 : as.inf[f] + (kDiffuse * nsumu[f]);
+            k = (f == UNKNOWN) ? 1.0 : as.inf[f] + (decay[f] * nsumu[f]);
           }
           else {
-            k = as.inf[f] + (kDiffuse * nsumu[f]);
+            k = as.inf[f] + (decay[f] * nsumu[f]);
           }
           temp[r][c][f] = k;
         }
@@ -848,4 +923,13 @@ bool operator<(const Offset &a, const Offset &b) {
       ? (a.r == b.r ? a.c < b.c : a.r < b.r)
       : (a.d2 < b.d2);
 }
+
+bool operator==(const Offset &a, const Offset &b) {
+  return a.r == b.r && a.c == b.c && a.d2 == b.d2;
+}
+
+bool operator!=(const Offset &a, const Offset &b) {
+  return a.r != b.r || a.c != b.c || a.d2 != b.d2;
+}
+
 
