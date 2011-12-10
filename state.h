@@ -18,6 +18,10 @@ typedef vector<int> v1i;
 typedef vector<v1i> v2i;
 typedef vector<v2i> v3i;
 
+typedef vector<float> v1f;
+typedef vector<v1f> v2f;
+typedef vector<v2f> v3f;
+
 // constants
 enum { NOMOVE, NORTH, EAST, SOUTH, WEST };
 const int TDIRECTIONS = 5;
@@ -46,12 +50,12 @@ class Square {
   int good, goodmove, bad, badmove;
   int enemies;
   int battle;
-  vector<float> inf;
-  vector<int> deadAnts;
+  v1f inf;
+  v1i deadAnts;
   int sumAttacked;
-  vector<int> attacked;
-  vector<int> fighting;
-  vector<int> status;
+  v1i attacked;
+  v1i fighting;
+  v1i status;
 
   Square();
   void reset();
@@ -63,42 +67,30 @@ class Square {
   bool isCleared();
   bool isEnemy() { return ant > 0; }
   bool moveAntTo(Square &bs);
-
+  float coefficient(int f);
+  bool canDiffuse();
+  float isSource(int f);
 };
 
 ostream& operator<<(ostream& os, const Square &square);
 
 // A grid location.
-class Location {
+class Loc {
  public:
-  int row, col;
-  Location() : row(0), col(0) {};
-  Location(const Location& loc) : row(loc.row), col(loc.col) {};
-  Location(short int r, short int c) : row(r), col(c) {};
+  int r, c;
+  Loc() : r(0), c(0) {};
+  Loc(const Loc& a) : r(a.r), c(a.c) {};
+  Loc(short int r, short int c) : r(r), c(c) {};
 };
 
-bool operator<(const Location &a, const Location &b);
-bool operator==(const Location &a, const Location &b);
-bool operator!=(const Location &a, const Location &b);
-ostream& operator<<(ostream &os, const Location &loc);
-
-class Move {
- public:
-  Location a;
-  Location b;
-  int d;
-};
-
-class Turn {
- public:
-  vector<Move> moves;
-  vector< vector<bool> > used;
-};
+bool operator<(const Loc &a, const Loc &b);
+bool operator==(const Loc &a, const Loc &b);
+bool operator!=(const Loc &a, const Loc &b);
+ostream& operator<<(ostream &os, const Loc &loc);
 
 struct Offset {
-  double d;
   int d2, r, c;
-  Offset(double d, int d2, int r, int c) : d(d), d2(d2), r(r), c(c) {};
+  Offset(int d2, int r, int c) : d2(d2), r(r), c(c) {};
 };
 
 bool operator<(const Offset &a, const Offset &b);
@@ -109,41 +101,36 @@ ostream& operator<<(ostream& os, const Offset &o);
 class Sim {
  public:
   Sim() {};
-  virtual void makeMove(const Location &a, int d);
+  virtual void makeMove(const Loc &a, int d);
   virtual void go();
 };
 
 class Agent {
  public:
   int id;
-  Location loc;
+  Loc loc;
   int mode;
-  Agent(int id, const Location& loc) : id(id), loc(loc), mode(ATTACK) {};
+  Agent(int id, const Loc& loc) : id(id), loc(loc), mode(ATTACK) {};
   virtual ~Agent() {};
 };
 
-inline int addWrap(int a, int b, int max) {
+inline int add(int a, int b, int max) {
   return (a + b + max) % max;
 }
 
-inline int diffWrap(int a, int b, int w) {
+inline int delta(int a, int b, int w) {
   int d = abs(a - b);
   return min(d, w - d);
-}
-
-inline int absdiff(int a, int b) {
-  return a > b ? a - b : b - a;
 }
 
 // store current state information
 class State {
  public:
   int rows, cols, turn, turns, players;
-  int attackradius2, spawnradius2, battleradius2, viewradius2;
+  int attackradius, spawnradius, battleradius, viewradius;
   double loadtime, turntime;
   
   int nSquares, nUnknown, nSeen, nVisible;
-  double attackradius, spawnradius, battleradius, viewradius;
   vector<Offset> offsets;
   vector<Offset>::iterator offsetSelf, offsetFirst, attackEnd, spawnEnd, battleEnd, viewEnd;
   vector<Offset> aoneOffsets;
@@ -162,11 +149,10 @@ class State {
   Sim *sim;
 
   vector< vector<Square> > grid;
-  vector< vector<double> > distanceGrid;
-  v2i distance2Grid;
+  v2i distanceGrid;
 
-  vector<Location> ants, hills, food;
-  vector<Location> moveFrom;
+  vector<Loc> ants, hills, food;
+  vector<Loc> moveFrom;
   v1i moves;
   v2i dir;
 
@@ -191,29 +177,26 @@ class State {
   bool tryMoves(vector<int> &va, vector<int> &vm);
   void undoMoves(vector<int> &va);
   void printAnts(vector<int> &ants);
-  
-  double distance(const Location &loc1, const Location &loc2);
-  int distance2(const Location &loc1, const Location &loc2);
-  int manhattan(const Location &a, const Location &b);
-  Location getLocation(const Location &startLoc, int direction);
-  Location getLocation(const Location &loc, const Location &off);
-  Location getLocationNoWrap(const Location &loc, int direction);
-  Location randomLocation();
-  v1i getDirections(const Location &a, const Location &b);
-  void markVisible(const Location& a);
-  void calcOffsets(int radius2, vector<Location> &offsets);
-  Location addOffset(const Location &a, const Offset &o);
-  bool hasAntConsistency();
-  //  bitset<64> summarize(const Location &a);
 
-  void putAnt(int row, int col, int player);
-  void putDead(int row, int col, int player);
-  void putHill(int row, int col, int player);
-  void putFood(int row, int col);
-  void putWater(int row, int col);
+  int distance(const Loc &loc1, const Loc &loc2);
+  Loc getLoc(const Loc &startLoc, int direction);
+  Loc getLoc(const Loc &loc, const Loc &off);
+  Loc getLocNoWrap(const Loc &loc, int direction);
+  Loc randomLoc();
+  v1i getDirections(const Loc &a, const Loc &b);
+  void markVisible(const Loc& a);
+  void calcOffsets(int radius2, vector<Loc> &offsets);
+  Loc addOffset(const Loc &a, const Offset &o);
+  bool hasAntConsistency();
+
+  void putAnt(int r, int c, int player);
+  void putDead(int r, int c, int player);
+  void putHill(int r, int c, int player);
+  void putFood(int r, int c);
+  void putWater(int r, int c);
   void updatePlayers(int player);
 
-  void clearAnts(vector<int> &va);
+  void clearAnts(v1i &va);
 
   void setInfluenceParameter(int f, float w, float d, float l);
   void update();
@@ -225,16 +208,20 @@ class State {
   int pickRandomAnt();
   bool payoffWin(v1i &ants);
   int assertAllAnts(v1i &is);
-  void adjustEnemyCount(const Location &a, int i);
-  int countEnemies(const Location &a);
+  void adjustEnemyCount(const Loc &a, int i);
+  int countEnemies(const Loc &a);
   int assertEnemyCountsCorrect();
+  void computeInfluenceBlend(v3f &temp);
+  void computeInfluenceLinear(v3f &temp);
+  void writeInfluence(v3f &temp);
 
   Square *antSquareAt(int i) { return squareAt(ants[i]); }
-  Square *squareAt(Location a) { return &(grid[a.row][a.col]); }
+  Square *squareAt(Loc a) { return &(grid[a.r][a.c]); }
 };
-
 
 ostream& operator<<(ostream &os, const State &state);
 istream& operator>>(istream &is, State &state);
+
+ostream& operator<<(ostream& os, const v1i &a);
 
 #endif //STATE_H_

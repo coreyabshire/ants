@@ -23,8 +23,8 @@ class Bot {
   void markMyHillsUsed();
   void updateAgents(v1i &ants, int mode);
   bool updateAgent(int i, int mode);
-  int bestDirection(const Location &a);
-  int bestEvadeDirection(const Location &a);
+  int bestDirection(const Loc &a);
+  int bestEvadeDirection(const Loc &a);
   void makeAttackMoves(v1i &ants);
   bool nextPermutation(v1i &moves);
   void payoffCell(v1i &ants, v1i &cell);

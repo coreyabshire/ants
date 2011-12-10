@@ -44,8 +44,8 @@ int main(int argc, char **argv) {
   state.bug << "calculating attack moves " << ants << endl;
   state.printAnts(ants);
   for (size_t i = 0; i < ants.size(); i++) {
-    Location &a = state.ants[ants[i]];
-    Square &as = state.grid[a.row][a.col];
+    Loc &a = state.ants[ants[i]];
+    Square &as = state.grid[a.r][a.c];
     if (as.ant == 0)
       ma.push_back(ants[i]);
     else

@@ -149,11 +149,11 @@ void tile(float x, float y, float r, float g, float b) {
   glEnd();
 }
 
-void line(const Location &a, const Location &b) {
+void line(const Loc &a, const Loc &b) {
   glColor3f(1.0, 0.0, 0.0);
   glBegin(GL_LINES);
-  glVertex3f(a.col + 0.5, a.row + 0.5, 0.0);
-  glVertex3f(b.col + 0.5, b.row + 0.5, 0.0);
+  glVertex3f(a.c + 0.5, a.r + 0.5, 0.0);
+  glVertex3f(b.c + 0.5, b.r + 0.5, 0.0);
   glEnd();
 }
 
@@ -200,13 +200,13 @@ void info() {
     }
   }
   if (mouseOver) {
-    Location a(mouseR, mouseC);
+    Loc a(mouseR, mouseC);
     Square &as = grids[turn][mouseR][mouseC];
     os << "At " << a << ": " << influence(as) << endl;
     for (int d = 0; d < TDIRECTIONS; d++) {
-      Location b = bot.state.getLocation(a, d);
+      Loc b = bot.state.getLoc(a, d);
       char dc = CDIRECTIONS[d];
-      Square &bs = grids[turn][b.row][b.col];
+      Square &bs = grids[turn][b.r][b.c];
       os << " " << dc << " " << b << ": " << setfill('0')
          << setiosflags(ios_base::fixed) << setprecision(7) << setw(9) << influence(bs) << endl;
     }

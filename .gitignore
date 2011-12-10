@@ -30,3 +30,5 @@ game_logs/
 .Rhistory
 temp.cc
 trainer
+gmon.out
+gprof.txt

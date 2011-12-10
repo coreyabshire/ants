@@ -1,23 +1,23 @@
 #include "bot.h"
 
 void Bot::markMyHillsUsed() {
-  for (vector<Location>::iterator a = state.hills.begin(); a != state.hills.end(); a++) {
-    Square &as = state.grid[(*a).row][(*a).col];
+  for (vector<Loc>::iterator a = state.hills.begin(); a != state.hills.end(); a++) {
+    Square &as = state.grid[(*a).r][(*a).c];
     as.isUsed = as.hillPlayer == 0;
   }
 }
 
 bool Bot::updateAgent(int i, int mode) {
   assert(i != -1);
-  Location a = state.ants[i];
-  Square &as = state.grid[a.row][a.col];
+  Loc a = state.ants[i];
+  Square &as = state.grid[a.r][a.c];
   state.bug << "update agent " << i << " " << as.ant << " " << mode << endl;
   assert(as.isUsed == false);
   int bestd = NOMOVE;
   float bestf = -999.0;
   for (int d = 0; d < TDIRECTIONS; d++) {
-    Location b = state.getLocation(a, d);
-    Square &bs = state.grid[b.row][b.col];
+    Loc b = state.getLoc(a, d);
+    Square &bs = state.grid[b.r][b.c];
     switch (mode) {
       case ATTACK:
         if (!bs.isWater && !bs.isFood && !bs.isUsed) {
@@ -53,8 +53,8 @@ bool Bot::updateAgent(int i, int mode) {
   }
   state.bug << "best move " << a << " " << CDIRECTIONS[bestd] << endl;
   if (bestd != NOMOVE) {
-    Location b = state.getLocation(a, bestd);
-    Square &bs = state.grid[b.row][b.col];
+    Loc b = state.getLoc(a, bestd);
+    Square &bs = state.grid[b.r][b.c];
     if (!bs.isUsed) {
       if (bs.ant == -1) {
         assert(bs.isCleared());
@@ -96,8 +96,8 @@ void Bot::updateAgents(vector<int> &ants, int mode=NORMAL) {
 
 void Bot::classifyAnts(vector< vector<int> > &battle, vector<int> &normal) {
   for (size_t i = 0; i < state.ants.size(); i++) {
-    Location &a = state.ants[i];
-    Square &as = state.grid[a.row][a.col];
+    Loc &a = state.ants[i];
+    Square &as = state.grid[a.r][a.c];
     // if (as.battle != -1) {
     //   battle[as.battle].push_back(i);
     // }
@@ -157,8 +157,8 @@ void Bot::makeAttackMoves(v1i &ants) {
   state.bug << "calculating attack moves " << ants << endl;
   state.printAnts(ants);
   for (size_t i = 0; i < ants.size(); i++) {
-    Location &a = state.ants[ants[i]];
-    Square &as = state.grid[a.row][a.col];
+    Loc &a = state.ants[ants[i]];
+    Square &as = state.grid[a.r][a.c];
     assert(as.isUsed == false);
     if (as.ant == 0)
       ma.push_back(ants[i]);
