@@ -45,12 +45,9 @@ const int kModes = 3;
 // A square in the grid.
 class Square {
  public:
-  bool isVisible, isWater, isHill, isFood, isKnown, isFood2, isHill2, isWarzone;
-  bool isLefty, isStraight, isUsed;
-  int direction;
-  int id, index;
+  bool isVisible, isWater, isHill, isFood, isKnown, isFood2, isHill2, isWarzone, isUsed;
+  int index;
   int ant, hillPlayer, hillPlayer2, lastSeen;
-  int ant2, id2;
   int enemies;
   int battle;
   int sumAttacked;
@@ -62,7 +59,7 @@ class Square {
   Square();
   void reset();
   void markVisible(int turn);
-  void setAnt(int sid, int sindex, int sant, bool sisUsed);
+  void setAnt(int sindex, int sant, bool sisUsed);
   bool isAnt();
   void clearAnt();
   bool isCleared();
@@ -118,15 +115,6 @@ class Sim {
   virtual void go();
 };
 
-class Agent {
- public:
-  int id;
-  Loc loc;
-  int mode;
-  Agent(int id, const Loc& loc) : id(id), loc(loc), mode(ATTACK) {};
-  virtual ~Agent() {};
-};
-
 inline int add(int a, int b, int m) {
   return (a + b + m) % m;
 }
@@ -152,7 +140,6 @@ class State {
   vector<double> scores;
   bool gameover;
   int64_t seed;
-  int nextId;
   int battle;
   int iterations;
   v1f weights;
@@ -172,10 +159,6 @@ class State {
   Timer timer;
   Bug bug;
 
-  int nextAntId;
-  vector<Agent> agents;
-  void createMissingAgents();
-
   State();
   State(Sim *sim);
   State(int rows, int cols);
@@ -194,7 +177,6 @@ class State {
   int distance(const Loc &loc1, const Loc &loc2);
   Loc getLoc(const Loc &startLoc, int direction);
   Loc getLoc(const Loc &loc, const Loc &off);
-  Loc getLocNoWrap(const Loc &loc, int direction);
   Loc randomLoc();
   v1i getDirections(const Loc &a, const Loc &b);
   void markVisible(const Loc& a);
@@ -222,8 +204,7 @@ class State {
   void adjustEnemyCount(const Loc &a, int i);
   int countEnemies(const Loc &a);
   int assertEnemyCountsCorrect();
-  void computeInfluenceBlend(v3f &temp);
-  void computeInfluenceLinear(v3f &temp);
+  void computeInfluence(v3f &temp);
   void writeInfluence(v3f &temp);
 
   Square *antSquareAt(int i) { return squareAt(ants[i]); }

@@ -2,16 +2,11 @@
 
 Square::Square() : inf(kFactors, 0.0) {
   isVisible = isWater = isHill = isFood = isKnown = isWarzone = 0;
-  enemies = 0;
   isUsed = false;
-  id = -1;
   index = -1;
   isFood2 = isHill2 = 0;
-  direction = NOMOVE;
   battle = -1;
   ant = hillPlayer = hillPlayer2 = -1;
-  ant2 = -1;
-  id2 = -1;
   inf[UNKNOWN] = 1.0;
   sumAttacked = 0;
   attacked = v1i(kMaxPlayers, 0);
@@ -26,12 +21,10 @@ float lerp(float a, float b, float t) {
 //resets the information for the square except water information
 void Square::reset() {
   isVisible = isHill2 = isFood2 = isWarzone = 0;
-  enemies = 0;
   isUsed = false;
   index = -1;
-  direction = NOMOVE;
   battle = -1;
-  ant = hillPlayer2 = ant2 = -1;
+  ant = hillPlayer2 = -1;
   if (!isWater) {
     if (!isKnown)
       inf[UNKNOWN] = lerp(inf[UNKNOWN], 2.0, 0.01);
@@ -61,8 +54,7 @@ void Square::markVisible(int turn) {
     inf[UNKNOWN] = lerp(inf[UNKNOWN], 0.0, 0.3);
 }
 
-void Square::setAnt(int sid, int sindex, int sant, bool sisUsed) {
-  id = sid;
+void Square::setAnt(int sindex, int sant, bool sisUsed) {
   index = sindex;
   ant = sant;
   isUsed = sisUsed;
@@ -74,12 +66,10 @@ bool Square::moveAntTo(Square &bs) {
   assert(bs.isCleared());
   assert(!bs.isWater);
   assert(!bs.isFood);
-  int tId, tIndex, tAnt;
-  tId = id;
+  int tIndex, tAnt;
   tIndex = index;
   tAnt = ant;
   clearAnt();
-  bs.id = tId;
   bs.index = tIndex;
   bs.ant = tAnt;
   bs.isUsed = true;
@@ -95,19 +85,18 @@ bool Square::isCleared() {
 }
 
 void Square::clearAnt() {
-  id = -1;
   index = -1;
   ant = -1;
   isUsed = false;
 }
 
 // constructor
-State::State() : turn(0), players(2), gameover(0), nextId(0) {
+State::State() : turn(0), players(2), gameover(0) {
   bug.open("./debug.txt");
   sim = &defaultSim;
 }
 
-State::State(Sim *sim) : turn(0), players(2), gameover(0), nextId(0), sim(sim) {
+State::State(Sim *sim) : turn(0), players(2), gameover(0), sim(sim) {
   bug.open("./debug.txt");
 }
 
@@ -116,7 +105,7 @@ State::~State() {
   bug.close();
 }
 
-State::State(int rows, int cols) : rows(rows), cols(cols), turn(0), players(2), gameover(0), nextId(0) {
+State::State(int rows, int cols) : rows(rows), cols(cols), turn(0), players(2), gameover(0) {
   bug.open("./debug.txt");
   sim = &defaultSim;
   spawnradius = 1;
@@ -136,7 +125,6 @@ void State::setup() {
   nSquares = nUnknown = rows * cols;
   nSeen = nVisible = 0;
   battle = -1;
-  nextAntId = 0;
   iterations = 20;
   grid = vector< vector<Square> >(rows, vector<Square>(cols, Square()));
   int n = max(rows, cols);
@@ -217,47 +205,10 @@ void State::writeMoves() {
   }
 }
 
-int State::countEnemies(const Loc &a) {
-  int n = 0;
-  Square &as = grid[a.r][a.c];
-  assert(as.ant != -1);
-  for (vector<Offset>::iterator o = offsetSelf; o != attackEnd; o++) {
-    Loc b = addOffset(a, *o);
-    Square &bs = grid[b.r][b.c];
-    if (bs.ant != -1 && as.ant != bs.ant)
-      ++n;
-  }
-  return n;
-}
-
-int State::assertEnemyCountsCorrect() {
-  for (size_t i = 0; i < ants.size(); i++) {
-    Loc a = ants[i];
-    Square &as = grid[a.r][a.c];
-    assert(as.enemies == countEnemies(a));
-  }
-  return 1;
-}
-
-void State::adjustEnemyCount(const Loc &a, int i) {
-  Square &as = grid[a.r][a.c];
-  assert(as.ant != -1);
-  for (vector<Offset>::iterator o = offsetSelf; o != attackEnd; o++) {
-    Loc b = addOffset(a, *o);
-    Square &bs = grid[b.r][b.c];
-    if (bs.ant != -1 && as.ant != bs.ant) {
-      as.enemies += i;
-      bs.enemies += i;
-    }
-  }
-}
-
 void State::makeMove(int i, int d) {
   Loc a = ants[i];
   Square &as = grid[a.r][a.c];
   if (d != NOMOVE) {
-    if (as.isWarzone >= 0)
-      adjustEnemyCount(a, -1);
     Loc b = getLoc(a, d);
     Square &bs = grid[b.r][b.c];
     assert(as.isUsed == false);
@@ -266,8 +217,6 @@ void State::makeMove(int i, int d) {
       moves[i] = d;
       ants[i] = b;
     }
-    if (as.isWarzone >= 0)
-      adjustEnemyCount(b, 1);
   }
   else {
     grid[a.r][a.c].isUsed = true;
@@ -279,22 +228,16 @@ void State::undoMove(int i) {
   Square &as = grid[a.r][a.c];
   int d = moves[i];
   if (d != NOMOVE) {
-    if (as.isWarzone >= 0)
-      adjustEnemyCount(a, -1);
     d = UDIRECTIONS[d];
     Loc b = getLoc(a, d);
     Square &bs = grid[b.r][b.c];
     bs.ant = as.ant;
-    bs.id = as.id;
     bs.index = as.index;
     as.ant = -1;
-    as.id = -1;
     as.index = -1;
     bs.isUsed = false;
     moves[i] = -1;
     ants[i] = b;
-    if (as.isWarzone >= 0)
-      adjustEnemyCount(b, 1);
   }
   else {
     as.isUsed = false;
@@ -304,7 +247,7 @@ void State::undoMove(int i) {
 bool State::tryMoves(v1i &va, v1i &vm) {
   vector<Loc> pa;
   vector<Loc> pb;
-  v1i sId, sIndex, sAnt;
+  v1i sIndex, sAnt;
   v2b used(rows, v1b(cols, false));
   // store
   for (size_t i = 0; i < va.size(); i++) {
@@ -321,24 +264,16 @@ bool State::tryMoves(v1i &va, v1i &vm) {
     used[b.r][b.c] = true;
     pa.push_back(a);
     pb.push_back(b);
-    sId.push_back(as.id);
     sIndex.push_back(as.index);
     sAnt.push_back(as.ant);
   }
-  for (size_t i = 0; i < va.size(); i++)
-    if (antSquareAt(va[i])->isWarzone)
-      adjustEnemyCount(pa[i], -1);
   clearAnts(va);
   // write
   for (size_t i = 0; i < va.size(); i++) {
     ants[va[i]] = pb[i];
     moves[va[i]] = vm[i];
-    antSquareAt(va[i])->setAnt(sId[i], sIndex[i], sAnt[i], true);
+    antSquareAt(va[i])->setAnt(sIndex[i], sAnt[i], true);
   }
-  for (size_t i = 0; i < va.size(); i++)
-    if (antSquareAt(va[i])->isWarzone)
-      adjustEnemyCount(pb[i], 1);
-  assert(assertEnemyCountsCorrect());
   return true;
 }
 
@@ -357,25 +292,17 @@ void State::undoMoves(v1i &va) {
     Loc b = getLoc(a, UDIRECTIONS[moves[va[i]]]);
     pa.push_back(a);
     pb.push_back(b);
-    sId.push_back(as.id);
     sIndex.push_back(as.index);
     sAnt.push_back(as.ant);
   }
-  for (size_t i = 0; i < va.size(); i++)
-    if (antSquareAt(va[i])->isWarzone)
-      adjustEnemyCount(pa[i], -1);
   // clear
   clearAnts(va);
   // write
   for (size_t i = 0; i < va.size(); i++) {
     ants[va[i]] = pb[i];
     moves[va[i]] = NOMOVE;
-    antSquareAt(va[i])->setAnt(sId[i], sIndex[i], sAnt[i], false);
+    antSquareAt(va[i])->setAnt(sIndex[i], sAnt[i], false);
   }
-  for (size_t i = 0; i < va.size(); i++)
-    if (antSquareAt(va[i])->isWarzone)
-      adjustEnemyCount(pb[i], 1);
-  assert(assertEnemyCountsCorrect());
 }
 
 void State::printAnts(v1i &va) {
@@ -385,21 +312,6 @@ void State::printAnts(v1i &va) {
     bug << "ant " << i << " " << va[i] << " " << a << " " << as.ant
         << " " << moves[va[i]] << " " << CDIRECTIONS[moves[va[i]]] << endl;
   }
-}
-
-bool State::payoffWin(v1i &ants) {
-  v1i dead(players, 0);
-  updateDead(ants, dead);
-  int d = 0;
-  for (int i = 0; i < players; i++) {
-    d += dead[i];
-  }
-  int u = d - (2*dead[0]);
-  for (int i = 1; i < players; i++) {
-    if ((d - (2*dead[i])) >= u)
-      return false;
-  }
-  return true;
 }
 
 // how to check if an ant dies
@@ -428,11 +340,6 @@ Loc State::addOffset(const Loc &a, const Offset &o) {
 
 int State::distance(const Loc &a, const Loc &b) {
   return dlookup[delta(a.r, b.r, rows)][delta(a.c, b.c, cols)];
-}
-
-// returns the new location from moving in a given direction with the edges wrapped
-Loc State::getLocNoWrap(const Loc &a, int d) {
-  return Loc(a.r + DIRECTIONS[d][0], a.c + DIRECTIONS[d][1]);
 }
 
 // returns the new location from moving in a given direction with the edges wrapped
@@ -475,7 +382,6 @@ void State::update() {
   assert(hasAntConsistency());
   updateVision();
   updateInfluence();
-  assert(assertEnemyCountsCorrect());
 }
 
 void State::updateVision() {
@@ -496,12 +402,6 @@ void State::updateVision() {
             bs.battle = as.battle;
         }
       }
-    }
-    for (vector<Offset>::iterator o = offsetSelf; o != attackEnd; o++) {
-      Loc b = addOffset(*a, *o);
-      Square &bs = grid[b.r][b.c];
-      if (bs.ant != -1 && as.ant != bs.ant)
-        ++as.enemies;
     }
   }
   for (vector<Loc>::iterator a = ants.begin(); a != ants.end(); a++) {
@@ -553,24 +453,6 @@ void State::updateVision() {
   }
 }
 
-void State::updateDead(v1i &is, v1i &dead) {
-  assertAllAnts(is);
-  for (size_t i = 0; i < is.size(); i++) {
-    Loc &a = ants[is[i]];
-    Square &as = grid[a.r][a.c];
-    for (vector<Offset>::iterator o = offsetSelf; o != attackEnd; o++) {
-      Loc b = addOffset(a, *o);
-      Square &bs = grid[b.r][b.c];
-      if (bs.ant != -1 && as.ant != bs.ant) {
-        if (as.enemies >= bs.enemies) {
-          dead[as.ant] += 1;
-          break;
-        }
-      }
-    }
-  }
-}
-
 float Square::coefficient(int f) {
   return ant == 0 ? -0.5
       :  ant >  0 ? 1.0
@@ -586,7 +468,7 @@ float Square::isSource(int f) {
       || (hillPlayer > 0 && f == TARGET);
 }
 
-void State::computeInfluenceBlend(v3f &temp) {
+void State::computeInfluence(v3f &temp) {
   for (int r = 0; r < rows; r++) {
     for (int c = 0; c < cols; c++) {
       Loc a(r, c);
@@ -611,34 +493,6 @@ void State::computeInfluenceBlend(v3f &temp) {
   }
 }
 
-void State::computeInfluenceLinear(v3f &temp) {
-  for (int r = 0; r < rows; r++) {
-    for (int c = 0; c < cols; c++) {
-      Loc a(r, c);
-      Square &as = grid[a.r][a.c];
-      if (as.canDiffuse()) {
-        vector<float> hmax(kFactors, 0.0);
-        for (int d = 0; d < TDIRECTIONS; d++) {
-          Loc b = getLoc(a, d);
-          Square &bs = grid[b.r][b.c];
-          for (int f = 0; f < kFactors; f++) {
-            float h = (decay[f] + 0.75) * bs.inf[f];
-            if (h > hmax[f])
-              hmax[f] = h;
-          }
-        }
-        for (int f = 0; f < kFactors; f++)
-          temp[r][c][f] = as.isSource(f) ? 1.0
-              : hmax[f];
-      }
-      else {
-        for (int f = 0; f < kFactors; f++)
-          temp[r][c][f] = 0.0;
-      }
-    }
-  }
-}
-
 void State::writeInfluence(v3f &temp) {
   for (int r = 0; r < rows; r++)
     for (int c = 0; c < cols; c++)
@@ -649,7 +503,7 @@ void State::writeInfluence(v3f &temp) {
 void State::updateInfluence() {
   static v3f temp(rows, v2f(cols, v1f(kFactors, 0.0)));
   for (int i = 0; i < iterations; i++) {
-    computeInfluenceLinear(temp);
+    computeInfluence(temp);
     writeInfluence(temp);
   }
 }
@@ -700,8 +554,6 @@ void State::putHill(int r, int c, int player) {
 
 void State::putDead(int r, int c, int player) {
   updatePlayers(player);
-  if (player == 0)
-    grid[r][c].id = -1;
   grid[r][c].deadAnts.push_back(player);
 }
 

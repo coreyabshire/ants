@@ -109,82 +109,6 @@ ostream& operator<<(ostream& os, const vector<int> &a) {
   return os;
 }
 
-void Bot::payoffCell(v1i &ants, v1i &cell) {
-  v1i dead(state.players, 0);
-  state.updateDead(ants, dead);
-  cell = dead;
-}
-
-void Bot::printPayoffMatrix(v3i &pm) {
-  state.bug << "payoff matrix" << endl;
-  for (size_t i = 0; i < (size_t) kModes; i++) {
-    state.bug << "payoff ";
-    for (size_t j = 0; j < (size_t) kModes; j++) {
-      state.bug << ((j == 0) ? "" : " | ");
-      for (size_t k = 0; k < (size_t) state.players; k++) {
-        state.bug << ((k == 0) ? "" : ",") << pm[i][j][k];
-      }
-    }
-    state.bug << endl;
-  }
-}
-
-void Bot::makeAttackMoves(v1i &ants) {
-  v1i ma, ea;
-  state.bug << "calculating attack moves " << ants << endl;
-  state.printAnts(ants);
-  for (size_t i = 0; i < ants.size(); i++) {
-    Loc &a = state.ants[ants[i]];
-    Square &as = state.grid[a.r][a.c];
-    assert(as.isUsed == false);
-    if (as.ant == 0)
-      ma.push_back(ants[i]);
-    else
-      ea.push_back(ants[i]);
-  }
-  state.bug << "my ants " << ma << endl;
-  state.bug << "enemy ants " << ea << endl;
-  int best = 0;
-  int maxu = -1;
-  int u = 0;
-  v3i pm(kModes, v2i(kModes, v1i(state.players, 0)));
-  for (size_t i = 0; i < (size_t)kModes; i++) {
-    updateAgents(ma, i);
-    state.bug << "My Ants: " << i << endl;
-    state.printAnts(ma);
-    for (size_t j = 0; j < (size_t)kModes; j++) {
-      state.bug << "Enemy Ants: " << j << endl;
-      state.printAnts(ea);
-      updateAgents(ea, j);
-      v1i &cell = pm[i][j];
-      payoffCell(ants, cell);
-      int killed = 0;
-      for (int i = 1; i < state.players; i++)
-        killed += cell[i];
-      int lost = cell[0];
-      if (lost) {
-        if (killed > lost) {
-          u += 2;
-        }
-        else {
-          u -= 1;
-        }
-      }
-      state.undoMoves(ea);
-    }
-    if (u > maxu) {
-      maxu = u;
-      best = i;
-    }
-    state.undoMoves(ma);
-  }
-  printPayoffMatrix(pm);
-  if (maxu > -1) {
-    state.bug << "found best moves " << " " << maxu << " " << best << endl;
-    updateAgents(ma, best);
-  }
-}
-
 void Bot::makeMoves() {
   state.bug << "turn " << state.turn << ":" << endl;
   state.update();
@@ -192,13 +116,9 @@ void Bot::makeMoves() {
   for (size_t i = 0; i < state.ants.size(); i++)
     allAnts.push_back(i);
   state.printAnts(allAnts);
-  vector< vector<int> > battle(state.battle + 1);
-  vector<int> normal;
-  classifyAnts(battle, normal);
   // for (size_t i = 0; i < battle.size(); i++)
   //   makeAttackMoves(battle[i]);
-  if (!normal.empty())
-    updateAgents(normal);
+  updateAgents(allAnts);
   state.writeMoves();
   state.bug << "time taken: " << state.turn << " " << state.timer.getTime() << "ms" << endl << endl;
 }
