@@ -1,6 +1,6 @@
 CC=g++
-CFLAGS=-c -Wall -O2 #-pg #-O3 -funroll-loops -c
-LDFLAGS=-lm -O2 #-pg
+CFLAGS=-c -Wall -O3 -funroll-loops -c
+LDFLAGS=-lm -O2
 SOURCES=MyBot.cc bot.cc state.cc
 HEADERS=bot.h state.h
 OBJECTS=$(addsuffix .o, $(basename ${SOURCES}))

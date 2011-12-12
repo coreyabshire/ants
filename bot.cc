@@ -76,7 +76,6 @@ void Bot::makeMoves() {
   vector<int> allAnts;
   for (size_t i = 0; i < state.ants.size(); i++)
     allAnts.push_back(i);
-  state.printAnts(allAnts);
   updateAgents(allAnts);
   state.writeMoves();
   state.bug << "time taken: " << state.turn << " " << state.timer.getTime() << "ms" << endl << endl;

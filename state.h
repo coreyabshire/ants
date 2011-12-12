@@ -29,7 +29,6 @@ const int TDIRECTIONS = 5;
 const char CDIRECTIONS[TDIRECTIONS] = {'-', 'N', 'E', 'S', 'W'};
 const int DIRECTIONS[TDIRECTIONS][2]  = { {0, 0}, {-1, 0}, {0,  1}, { 1, 0}, {0, -1} }; //{-, N, E, S, W}
 const int UDIRECTIONS[TDIRECTIONS] = { NOMOVE, SOUTH, WEST, NORTH, EAST };
-const int kDirichletAlpha = 1;
 
 enum { FOOD, TARGET, UNKNOWN };
 const int kFactors = 3;
@@ -37,15 +36,14 @@ const int kMaxPlayers = 10;
 
 enum { NORMAL, ATTACK, EVADE };
 enum { SAFE, KILL, DIE };
-const int kModes = 3;
 
 // A square in the grid.
 class Square {
  public:
   bool isVisible, isWater, isHill, isFood, isKnown, isFood2, isHill2, isUsed;
   int index, ant, hillPlayer, hillPlayer2, sumAttacked;
-  v1f inf;
   v1i attacked, fighting, status;
+  v1f inf;
 
   Square();
   void reset();
@@ -149,14 +147,10 @@ class State {
   void writeMoves();
   void makeMove(int i, int d);
   void undoMove(int i);
-  bool tryMoves(vector<int> &va, vector<int> &vm);
-  void undoMoves(vector<int> &va);
-  void printAnts(vector<int> &ants);
 
   int distance(const Loc &loc1, const Loc &loc2);
   Loc getLoc(const Loc &startLoc, int direction);
   Loc getLoc(const Loc &loc, const Loc &off);
-  Loc randomLoc();
   v1i getDirections(const Loc &a, const Loc &b);
   Loc addOffset(const Loc &a, const Offset &o);
   bool hasAntConsistency();

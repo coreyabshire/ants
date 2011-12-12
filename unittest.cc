@@ -38,36 +38,6 @@ TEST(State, Init) {
   Loc a(1, 1), b(3, 3), c(9, 8);
 }
 
-TEST(State, TryMoves) {
-  State state(10, 10);
-  Loc a(1, 1), b(1, 2);
-  vector<int> moves;
-  vector<int> ants;
-  EXPECT_EQ(-1, state.grid[1][1].ant);
-  EXPECT_EQ(-1, state.grid[1][2].ant);
-  EXPECT_EQ(-1, state.grid[2][1].ant);
-  EXPECT_EQ(-1, state.grid[0][2].ant);
-  state.putAnt(1, 1, 0);
-  state.putAnt(1, 2, 0);
-  EXPECT_EQ(0, state.grid[1][1].ant);
-  EXPECT_EQ(0, state.grid[1][2].ant);
-  EXPECT_EQ(-1, state.grid[2][1].ant);
-  EXPECT_EQ(-1, state.grid[0][2].ant);
-  ants.push_back(0); moves.push_back(SOUTH);
-  ants.push_back(1); moves.push_back(NORTH);
-  EXPECT_TRUE(state.tryMoves(ants, moves));
-  state.printAnts(ants);
-  EXPECT_EQ(-1, state.grid[1][1].ant);
-  EXPECT_EQ(-1, state.grid[1][2].ant);
-  EXPECT_EQ(0, state.grid[2][1].ant);
-  EXPECT_EQ(0, state.grid[0][2].ant);
-  state.undoMoves(ants);
-  EXPECT_EQ(0, state.grid[1][1].ant);
-  EXPECT_EQ(0, state.grid[1][2].ant);
-  EXPECT_EQ(-1, state.grid[2][1].ant);
-  EXPECT_EQ(-1, state.grid[0][2].ant);
-}
-
 TEST(State, MoveAntTo) {
   State state(10, 10);
   Loc a(1, 1), b(1, 2);
@@ -92,45 +62,6 @@ TEST(State, Update) {
   state.putFood(4, 4);
   state.update();
 }
-
-// TEST(State, DistanceSpeed) {
-//   State state(200, 200);
-//   vector<Loc> a;
-//   for (int i = 0; i < 1000; i++)
-//     a.push_back(state.randomLoc());
-//   Timer timer;
-//   timer.start();
-//   for (int i = 0; i < 1000000; i++) {
-//     double distance = state.distance(a[rand()%1000], a[rand()%1000]);
-//   }
-//   EXPECT_PRED_FORMAT2(::testing::FloatLE, 0.001, timer.getTime());
-// }
-
-// TEST(State, DistanceSpeed) {
-//   State state(200, 200);
-//   vector<Loc> a;
-//   for (int i = 0; i < 1000; i++)
-//     a.push_back(state.randomLoc());
-//   Timer timer;
-//   timer.start();
-//   for (int i = 0; i < 1000000; i++) {
-//     int distance = state.distance(a[rand()%1000], a[rand()%1000]);
-//   }
-//   EXPECT_PRED_FORMAT2(::testing::FloatLE, 0.001, timer.getTime());
-// }
-
-// TEST(State, ManhattanSpeed) {
-//   State state(200, 200);
-//   vector<Loc> a;
-//   for (int i = 0; i < 1000; i++)
-//     a.push_back(state.randomLoc());
-//   Timer timer;
-//   timer.start();
-//   for (int i = 0; i < 1000000; i++) {
-//     int distance = state.manhattan(a[rand()%1000], a[rand()%1000]);
-//   }
-//   EXPECT_PRED_FORMAT2(::testing::FloatLE, 0.001, timer.getTime());
-// }
 
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);

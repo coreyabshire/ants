@@ -4,8 +4,7 @@
 #include "state.h"
 
 Square::Square() : inf(kFactors, 0.0) {
-  isVisible = isWater = isHill = isFood = isKnown = 0;
-  isUsed = false;
+  isVisible = isWater = isHill = isFood = isKnown = isUsed = 0;
   index = -1;
   isFood2 = isHill2 = 0;
   ant = hillPlayer = hillPlayer2 = -1;
@@ -31,8 +30,7 @@ int delta(int a, int b, int m) {
 
 //resets the information for the square except water information
 void Square::reset() {
-  isVisible = isHill2 = isFood2 = 0;
-  isUsed = false;
+  isVisible = isHill2 = isFood2 = isUsed = 0;
   index = -1;
   ant = hillPlayer2 = -1;
   if (!isWater) {
@@ -137,9 +135,9 @@ void State::setup() {
   weights = v1f(kFactors, 0.0);
   decay = v1f(kFactors, 0.0);
   loss = v1f(kFactors, 0.0);
-  setInfluenceParameter(FOOD,     0.50,  0.10,  1.00);
-  setInfluenceParameter(TARGET,   1.00,  0.20,  1.00);
-  setInfluenceParameter(UNKNOWN,  0.25,  0.05,  1.00);
+  setInfluenceParameter(FOOD,     0.25,  0.10,  1.00);
+  setInfluenceParameter(TARGET,   1.00,  0.25,  1.00);
+  setInfluenceParameter(UNKNOWN,  0.01,  0.01,  1.00);
   // build distance lookup tables
   for (int r = 0; r < n; r++)
     for (int c = 0; c < n; c++)
@@ -245,72 +243,6 @@ void State::undoMove(int i) {
   }
 }
 
-bool State::tryMoves(v1i &va, v1i &vm) {
-  vector<Loc> pa;
-  vector<Loc> pb;
-  v1i sIndex, sAnt;
-  v2b used(rows, v1b(cols, false));
-  // store
-  for (size_t i = 0; i < va.size(); i++) {
-    Loc &a = ants[va[i]];
-    Square &as = grid[a.r][a.c];
-    Loc b = getLoc(a, vm[i]);
-    Square &bs = grid[b.r][b.c];
-    assert(!as.isUsed);
-    if (bs.isWater || bs.isFood || bs.isUsed || used[b.r][b.c])
-      return false;
-    // prevent stomping on an ant that is not going to be otherwise moved in this set?
-    if (!bs.isCleared() && find(va.begin(), va.end(), bs.index) == va.end())
-      return false;
-    used[b.r][b.c] = true;
-    pa.push_back(a);
-    pb.push_back(b);
-    sIndex.push_back(as.index);
-    sAnt.push_back(as.ant);
-  }
-  clearAnts(va);
-  // write
-  for (size_t i = 0; i < va.size(); i++) {
-    ants[va[i]] = pb[i];
-    moves[va[i]] = vm[i];
-    antSquareAt(va[i])->setAnt(sIndex[i], sAnt[i], true);
-  }
-  return true;
-}
-
-void State::undoMoves(v1i &va) {
-  vector<Loc> pa;
-  vector<Loc> pb;
-  v1i sId, sIndex, sAnt;
-  // store
-  for (size_t i = 0; i < va.size(); i++) {
-    Loc &a = ants[va[i]];
-    Square &as = grid[a.r][a.c];
-    Loc b = getLoc(a, UDIRECTIONS[moves[va[i]]]);
-    pa.push_back(a);
-    pb.push_back(b);
-    sIndex.push_back(as.index);
-    sAnt.push_back(as.ant);
-  }
-  // clear
-  clearAnts(va);
-  // write
-  for (size_t i = 0; i < va.size(); i++) {
-    ants[va[i]] = pb[i];
-    moves[va[i]] = NOMOVE;
-    antSquareAt(va[i])->setAnt(sIndex[i], sAnt[i], false);
-  }
-}
-
-void State::printAnts(v1i &va) {
-  for (size_t i = 0; i < va.size(); i++) {
-    Loc &a = ants[va[i]];
-    Square &as = grid[a.r][a.c];
-    bug << "ant " << i << " " << va[i] << " " << a << " " << as.ant
-        << " " << moves[va[i]] << " " << CDIRECTIONS[moves[va[i]]] << endl;
-  }
-}
-
 Loc State::addOffset(const Loc &a, const Offset &o) {
   return Loc(add(a.r, o.r, rows), add(a.c, o.c, cols));
 }
@@ -326,10 +258,6 @@ Loc State::getLoc(const Loc &a, int d) {
 
 Loc State::getLoc(const Loc &a, const Loc &o) {
   return Loc(add(a.r, o.r, rows), add(a.c, o.c, cols));
-}
-
-Loc State::randomLoc() {
-  return Loc(rand() % rows, rand() % cols);
 }
 
 bool State::hasAntConsistency() {
@@ -358,13 +286,12 @@ void State::updateVision() {
         squareAt(addOffset(*a, *o))->markVisible();
   }
   v3b used(rows, v2b(cols, v1b(players, false)));
-  for (vector<Loc>::iterator ai = ants.begin(); ai != ants.end(); ai++) {
-    Loc &a = *ai;
-    Square &as = grid[a.r][a.c];
-    if (!used[a.r][a.c][as.ant]) {
-      used[a.r][a.c][as.ant] = true;
+  for (vector<Loc>::iterator a = ants.begin(); a != ants.end(); a++) {
+    Square &as = grid[a->r][a->c];
+    if (!used[a->r][a->c][as.ant]) {
+      used[a->r][a->c][as.ant] = true;
       for (vector<Offset>::iterator o = aoneOffsets.begin(); o != aoneOffsets.end(); o++) {
-        Loc b = addOffset(a, *o);
+        Loc b = addOffset(*a, *o);
         Square &bs = grid[b.r][b.c];
         bs.attacked[as.ant]++;
         bs.sumAttacked++;
@@ -392,7 +319,7 @@ void State::updateVision() {
 }
 
 float Square::coefficient(int f) {
-  return ant == 0 ? -0.5 : ant >  0 ? 1.0 :  1.0;
+  return ant == 0 ? 0.1 : ant >  0 ? 1.0 :  1.0;
 }
 
 bool Square::canDiffuse() {
