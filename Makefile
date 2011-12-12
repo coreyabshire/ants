@@ -1,6 +1,6 @@
 CC=g++
-CFLAGS=-c -Wall -O2 -pg #-O3 -funroll-loops -c
-LDFLAGS=-lm -O2 -pg
+CFLAGS=-c -Wall -O2 #-pg #-O3 -funroll-loops -c
+LDFLAGS=-lm -O2 #-pg
 SOURCES=MyBot.cc bot.cc state.cc
 HEADERS=bot.h state.h
 OBJECTS=$(addsuffix .o, $(basename ${SOURCES}))
@@ -11,12 +11,12 @@ TESTSOURCES=unittest.cc bot.cc state.cc
 TESTOBJECTS=$(addsuffix .o, $(basename ${TESTSOURCES}))
 TESTEXECUTABLE=UnitTest
 
-VIZLDFLAGS=-lm -lGL -lGLU -lglut -O2 -pg
+VIZLDFLAGS=-lm -lGL -lGLU -lglut -O2 #-pg
 VIZSOURCES=VizBot.cc bot.cc state.cc
 VIZOBJECTS=$(addsuffix .o, $(basename ${VIZSOURCES}))
 VIZEXECUTABLE=VizBot
 
-UTILLDFLAGS=-lm -lGL -lGLU -lglut -O2 -pg
+UTILLDFLAGS=-lm -lGL -lGLU -lglut -O2 #-pg
 UTILSOURCES=botviz3.cc bot.cc state.cc
 UTILOBJECTS=$(addsuffix .o, $(basename ${UTILSOURCES}))
 UTILEXECUTABLE=botviz3
@@ -24,7 +24,7 @@ UTILEXECUTABLE=botviz3
 #Uncomment the following to enable debugging
 CFLAGS+=-g -DDEBUG 
 #Comment the following to enable assertions 
-CFLAGS+=-DNDEBUG
+#CFLAGS+=-DNDEBUG
 
 all: $(OBJECTS) $(EXECUTABLE) $(VIZEXECUTABLE) $(UTILEXECUTABLE) test
 

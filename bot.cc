@@ -1,12 +1,5 @@
 #include "bot.h"
 
-void Bot::markMyHillsUsed() {
-  for (vector<Loc>::iterator a = state.hills.begin(); a != state.hills.end(); a++) {
-    Square &as = state.grid[(*a).r][(*a).c];
-    as.isUsed = as.hillPlayer == 0;
-  }
-}
-
 bool Bot::updateAgent(int i, int mode) {
   assert(i != -1);
   Loc a = state.ants[i];
@@ -20,23 +13,8 @@ bool Bot::updateAgent(int i, int mode) {
     Square &bs = state.grid[b.r][b.c];
     switch (mode) {
       case ATTACK:
-        if (!bs.isWater && !bs.isFood && !bs.isUsed) {
-          float f = bs.ant == 0 ? bs.inf[ENEMY] : bs.inf[FRIEND];
-          if (f > bestf) {
-            bestd = d;
-            bestf = f;
-          }
-        }
         break;
       case EVADE:
-        if (!bs.isWater && !bs.isFood && !bs.isUsed) {
-          float f = bs.ant == 0 ? bs.inf[ENEMY] : bs.inf[FRIEND];
-          f *= -1.0;
-          if (f > bestf) {
-            bestd = d;
-            bestf = f;
-          }
-        }
         break;
       default:
         if (!bs.isWater && !bs.isFood && !bs.isUsed && bs.status[as.ant] == SAFE) {
@@ -51,7 +29,6 @@ bool Bot::updateAgent(int i, int mode) {
         break;
     }
   }
-  state.bug << "best move " << a << " " << CDIRECTIONS[bestd] << endl;
   if (bestd != NOMOVE) {
     Loc b = state.getLoc(a, bestd);
     Square &bs = state.grid[b.r][b.c];
@@ -212,14 +189,12 @@ void Bot::makeMoves() {
   state.bug << "turn " << state.turn << ":" << endl;
   state.update();
   vector<int> allAnts;
-  for (size_t i = 0; i < state.ants.size(); i++) {
+  for (size_t i = 0; i < state.ants.size(); i++)
     allAnts.push_back(i);
-  }
   state.printAnts(allAnts);
   vector< vector<int> > battle(state.battle + 1);
   vector<int> normal;
   classifyAnts(battle, normal);
-  //markMyHillsUsed();
   // for (size_t i = 0; i < battle.size(); i++)
   //   makeAttackMoves(battle[i]);
   if (!normal.empty())

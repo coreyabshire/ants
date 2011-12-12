@@ -22,6 +22,10 @@ typedef vector<float> v1f;
 typedef vector<v1f> v2f;
 typedef vector<v2f> v3f;
 
+typedef vector<bool> v1b;
+typedef vector<v1b> v2b;
+typedef vector<v2b> v3b;
+
 // constants
 enum { NOMOVE, NORTH, EAST, SOUTH, WEST };
 const int TDIRECTIONS = 5;
@@ -30,8 +34,8 @@ const int DIRECTIONS[TDIRECTIONS][2]  = { {0, 0}, {-1, 0}, {0,  1}, { 1, 0}, {0,
 const int UDIRECTIONS[TDIRECTIONS] = { NOMOVE, SOUTH, WEST, NORTH, EAST };
 const int kDirichletAlpha = 1;
 
-enum { VISIBLE, LAND, FOOD, TARGET, UNKNOWN, ENEMY, FRIEND };
-const int kFactors = 7;
+enum { FOOD, TARGET, UNKNOWN };
+const int kFactors = 3;
 const int kMaxPlayers = 10;
 
 enum { NORMAL, ATTACK, EVADE };
@@ -47,20 +51,17 @@ class Square {
   int id, index;
   int ant, hillPlayer, hillPlayer2, lastSeen;
   int ant2, id2;
-  int good, goodmove, bad, badmove;
   int enemies;
   int battle;
+  int sumAttacked;
+  float unknown;
   v1f inf;
   v1i deadAnts;
-  int sumAttacked;
-  v1i attacked;
-  v1i fighting;
-  v1i status;
+  v1i attacked, fighting, status;
 
   Square();
   void reset();
   void markVisible(int turn);
-  //  float influence();
   void setAnt(int sid, int sindex, int sant, bool sisUsed);
   bool isAnt();
   void clearAnt();
@@ -89,14 +90,26 @@ bool operator!=(const Loc &a, const Loc &b);
 ostream& operator<<(ostream &os, const Loc &loc);
 
 struct Offset {
-  int d2, r, c;
-  Offset(int d2, int r, int c) : d2(d2), r(r), c(c) {};
+  int r, c, d;
+  Offset(int r, int c, int d) : r(r), c(c), d(d) {};
 };
 
 bool operator<(const Offset &a, const Offset &b);
 bool operator==(const Offset &a, const Offset &b);
 bool operator!=(const Offset &a, const Offset &b);
 ostream& operator<<(ostream& os, const Offset &o);
+
+typedef vector<Offset> v1o;
+typedef vector<v1o> v2o;
+typedef vector<v2o> v3o;
+
+typedef vector<Square> v1s;
+typedef vector<v1s> v2s;
+typedef vector<v2s> v3s;
+
+typedef vector<Loc> v1l;
+typedef vector<v1l> v2l;
+typedef vector<v2l> v3l;
 
 class Sim {
  public:
@@ -114,13 +127,13 @@ class Agent {
   virtual ~Agent() {};
 };
 
-inline int add(int a, int b, int max) {
-  return (a + b + max) % max;
+inline int add(int a, int b, int m) {
+  return (a + b + m) % m;
 }
 
-inline int delta(int a, int b, int w) {
+inline int delta(int a, int b, int m) {
   int d = abs(a - b);
-  return min(d, w - d);
+  return min(d, m - d);
 }
 
 // store current state information
@@ -131,30 +144,30 @@ class State {
   double loadtime, turntime;
   
   int nSquares, nUnknown, nSeen, nVisible;
-  vector<Offset> offsets;
-  vector<Offset>::iterator offsetSelf, offsetFirst, attackEnd, spawnEnd, battleEnd, viewEnd;
-  vector<Offset> aoneOffsets;
-  vector< vector<Offset> > aEnterOffsets;
-  vector< vector<Offset> > aLeaveOffsets;
+  v1o offsets;
+  v1o::iterator offsetSelf, offsetFirst, attackEnd, spawnEnd, battleEnd, viewEnd;
+  v1o aoneOffsets;
+  v2o aEnterOffsets;
+  v2o aLeaveOffsets;
   vector<double> scores;
   bool gameover;
   int64_t seed;
   int nextId;
   int battle;
-  vector<float> weights;
-  vector<float> decay;
-  vector<float> loss;
+  int iterations;
+  v1f weights;
+  v1f decay;
+  v1f loss;
 
   Sim defaultSim;
   Sim *sim;
 
-  vector< vector<Square> > grid;
-  v2i distanceGrid;
+  v2s grid;
+  v2i dlookup;
 
-  vector<Loc> ants, hills, food;
-  vector<Loc> moveFrom;
+  v1l ants, hills, food;
+  v1l moveFrom;
   v1i moves;
-  v2i dir;
 
   Timer timer;
   Bug bug;
@@ -201,10 +214,8 @@ class State {
   void setInfluenceParameter(int f, float w, float d, float l);
   void update();
   void updateVision();
-  void updateInfluence(int iterations);
+  void updateInfluence();
   void updateDead(v1i &is, v1i &dead);
-  void initDir();
-  void updateDir(int i);
   int pickRandomAnt();
   bool payoffWin(v1i &ants);
   int assertAllAnts(v1i &is);

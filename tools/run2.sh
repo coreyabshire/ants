@@ -1,1 +1,1 @@
-tools/playgame.py --player_seed 42 --end_wait=0.25 --verbose --log_dir game_logs --log_input --nolaunch --html replay.0.html --turns 100 --fill --map_file "$@" "./MyBot" "python tools/sample_bots/python/HunterBot.py"
+tools/playgame.py --player_seed 42 --end_wait=0.25 --verbose --log_dir game_logs --log_input --nolaunch --html replay.0.html --turns 4000 --scenario --fill --map_file "$@" "./MyBot" "python tools/sample_bots/python/HunterBot.py"

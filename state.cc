@@ -2,37 +2,44 @@
 
 Square::Square() : inf(kFactors, 0.0) {
   isVisible = isWater = isHill = isFood = isKnown = isWarzone = 0;
-  good = goodmove = bad = badmove = 0;
   enemies = 0;
   isUsed = false;
   id = -1;
   index = -1;
   isFood2 = isHill2 = 0;
-  inf[LAND] = 1.0;
   direction = NOMOVE;
   battle = -1;
   ant = hillPlayer = hillPlayer2 = -1;
   ant2 = -1;
   id2 = -1;
+  inf[UNKNOWN] = 1.0;
   sumAttacked = 0;
   attacked = v1i(kMaxPlayers, 0);
   fighting = v1i(kMaxPlayers, 0);
   status = v1i(kMaxPlayers, 0);
 }
 
+float lerp(float a, float b, float t) {
+  return a + t * (b - a);
+}
+
 //resets the information for the square except water information
 void Square::reset() {
   isVisible = isHill2 = isFood2 = isWarzone = 0;
-  good = goodmove = bad = badmove = 0;
   enemies = 0;
   isUsed = false;
   index = -1;
   direction = NOMOVE;
   battle = -1;
   ant = hillPlayer2 = ant2 = -1;
-  // inf[VISIBLE] *= loss[VISIBLE];
-  //for (vector<int>::iterator i = points.begin(); i != points.end(); i++)
-  //  *i = 0;
+  if (!isWater) {
+    if (!isKnown)
+      inf[UNKNOWN] = lerp(inf[UNKNOWN], 2.0, 0.01);
+    else if (hillPlayer == 0)
+      inf[UNKNOWN] = lerp(inf[UNKNOWN], 2.0, 0.04);
+    else
+      inf[UNKNOWN] = lerp(inf[UNKNOWN], 0.5, 0.01);
+  }
   deadAnts.clear();
   if (sumAttacked > 0) {
     sumAttacked = 0;
@@ -50,7 +57,8 @@ void Square::markVisible(int turn) {
   isHill = isHill2;
   hillPlayer = hillPlayer2;
   lastSeen = turn;
-  inf[VISIBLE] = 1.0;
+  if (!isWater)
+    inf[UNKNOWN] = lerp(inf[UNKNOWN], 0.0, 0.3);
 }
 
 void Square::setAnt(int sid, int sindex, int sant, bool sisUsed) {
@@ -129,55 +137,41 @@ void State::setup() {
   nSeen = nVisible = 0;
   battle = -1;
   nextAntId = 0;
+  iterations = 20;
   grid = vector< vector<Square> >(rows, vector<Square>(cols, Square()));
   int n = max(rows, cols);
-  distanceGrid = v2i(n, v1i(n, 0));
+  dlookup = v2i(n, v1i(n, 0));
   battleradius = pow(sqrt(attackradius) + 2.0, 2.0);
   weights = v1f(kFactors, 0.0);
   decay = v1f(kFactors, 0.0);
   loss = v1f(kFactors, 0.0);
-  setInfluenceParameter(VISIBLE,  0.00,  0.00,  0.90);
-  setInfluenceParameter(LAND,     0.00,  0.10,  1.00);
-  setInfluenceParameter(FOOD,     0.80,  0.12,  1.00);
+  setInfluenceParameter(FOOD,     0.50,  0.10,  1.00);
   setInfluenceParameter(TARGET,   1.00,  0.20,  1.00);
-  setInfluenceParameter(UNKNOWN,  0.40,  0.05,  1.00);
-  setInfluenceParameter(ENEMY,    0.50,  0.10,  1.00);
-  setInfluenceParameter(FRIEND,   0.00,  0.01,  1.00);
-
+  setInfluenceParameter(UNKNOWN,  0.25,  0.05,  1.00);
   // build distance lookup tables
-  for (int r = 0; r < n; r++) {
-    for (int c = 0; c < n; c++) {
-      int d = r * r + c * c;
-      distanceGrid[r][c] = d;
-    }
-  }
+  for (int r = 0; r < n; r++)
+    for (int c = 0; c < n; c++)
+      dlookup[r][c] = r * r + c * c;
   // build offset list
-  for (int r = (1 - n); r < n; r++) {
-    for (int c = (1 - n); c < n; c++) {
-      int ar = abs(r), ac = abs(c);
-      offsets.push_back(Offset(distanceGrid[ar][ac], r, c));
-    }
-  }
+  for (int r = (1 - n); r < n; r++)
+    for (int c = (1 - n); c < n; c++)
+      offsets.push_back(Offset(r, c, dlookup[abs(r)][abs(c)]));
   sort(offsets.begin(), offsets.end());
   // capture key offsets
-  vector<Offset>::iterator offset = offsets.begin();
-  offsetSelf = offset++;
-  offsetFirst = offset++;
-  for (; (offset < offsets.end()) && (*offset).d2 <= spawnradius; offset++);
-  spawnEnd = offset;
-  for (; (offset < offsets.end()) && (*offset).d2 <= attackradius; offset++);
-  attackEnd = offset;
-  for (; (offset < offsets.end()) && (*offset).d2 <= battleradius; offset++);
-  battleEnd = offset;
-  for (; (offset < offsets.end()) && (*offset).d2 <= viewradius; offset++);
-  viewEnd = offset;
+  vector<Offset>::iterator oi = offsets.begin();
+  offsetSelf = oi++;
+  offsetFirst = oi++;
+  for (; (oi < offsets.end()) && (*oi).d <= spawnradius; oi++);  spawnEnd = oi;
+  for (; (oi < offsets.end()) && (*oi).d <= attackradius; oi++); attackEnd = oi;
+  for (; (oi < offsets.end()) && (*oi).d <= battleradius; oi++); battleEnd = oi;
+  for (; (oi < offsets.end()) && (*oi).d <= viewradius; oi++);   viewEnd = oi;
   // special attack offsets
-  for (vector<Offset>::iterator oi = offsetSelf; oi < attackEnd; oi++) {
+  for (oi = offsetSelf; oi < attackEnd; oi++) {
     Offset &o = *oi;
     for (int d = 0; d < TDIRECTIONS; d++) {
       int r = o.r + DIRECTIONS[d][0];
       int c = o.c + DIRECTIONS[d][1];
-      Offset b(distanceGrid[abs(r)][abs(c)], r, c);
+      Offset b(r, c, dlookup[abs(r)][abs(c)]);
       if (find(aoneOffsets.begin(), aoneOffsets.end(), b) == aoneOffsets.end())
         aoneOffsets.push_back(b);
     }
@@ -194,7 +188,6 @@ void State::reset() {
   food.clear();
   moves.clear();
   moveFrom.clear();
-  dir.clear();
   for(int r = 0; r < rows; r++)
     for(int c = 0; c < cols; c++)
       grid[r][c].reset();
@@ -312,7 +305,7 @@ bool State::tryMoves(v1i &va, v1i &vm) {
   vector<Loc> pa;
   vector<Loc> pb;
   v1i sId, sIndex, sAnt;
-  vector< vector<bool> > used(rows, vector<bool>(cols, false));
+  v2b used(rows, v1b(cols, false));
   // store
   for (size_t i = 0; i < va.size(); i++) {
     Loc &a = ants[va[i]];
@@ -434,7 +427,7 @@ Loc State::addOffset(const Loc &a, const Offset &o) {
 }
 
 int State::distance(const Loc &a, const Loc &b) {
-  return distanceGrid[delta(a.r, b.r, rows)][delta(a.c, b.c, cols)];
+  return dlookup[delta(a.r, b.r, rows)][delta(a.c, b.c, cols)];
 }
 
 // returns the new location from moving in a given direction with the edges wrapped
@@ -466,93 +459,47 @@ void State::markVisible(const Loc& a) {
   squareAt(a)->markVisible(turn);
 }
 
-void State::initDir() {
-  dir = v2i(ants.size(), v1i(TDIRECTIONS, kDirichletAlpha));
-}
-
-void State::updateDir(int i) {
-  vector<float> score(TDIRECTIONS, 0.0);
-  for (int d = 0; d < TDIRECTIONS; d++) {
-    // if (tryMove(i, d)) {
-    //   score[d] = computeScore();
-    //   undoMove(i);
-    // }
-  }
-}
-
-// SCORE
-// proximity of my ants to food
-// proximity of my ants to enemy hills
-// proximity of enemy ants to food
-// proximity of enemy ants to my hills
-// proximity of my ants to each other depending on if there is food around
-// proximity of my ants to my hill
-// number of my ants that would die
-// number of enemy ants that would die
-// int State::score() {
-// }
-
-int State::pickRandomAnt() {
-  return rand() % ants.size();
-}
-
 bool State::hasAntConsistency() {
-  bug << "checking ant consistency " << turn << endl;
-  for (int r = 0; r < rows; r++) {
-    for (int c = 0; c < cols; c++) {
-      if (grid[r][c].ant == -1) {
+  for (int r = 0; r < rows; r++)
+    for (int c = 0; c < cols; c++)
+      if (grid[r][c].ant == -1)
         assert(grid[r][c].isCleared());
-      }
-      else if (grid[r][c].ant == 0) {
+      else if (grid[r][c].ant == 0)
         assert(grid[r][c].index >= 0);
-      }
-      else {
+      else
         assert(grid[r][c].index >= 0);
-      }
-    }
-  }
   return true;
 }
 
 void State::update() {
   assert(hasAntConsistency());
   updateVision();
-  updateInfluence(20);
+  updateInfluence();
   assert(assertEnemyCountsCorrect());
-  //initDir();
 }
 
 void State::updateVision() {
   for (vector<Loc>::iterator a = ants.begin(); a != ants.end(); a++) {
     Square &as = grid[(*a).r][(*a).c];
     if (as.ant == 0) {
-      for (vector<Offset>::iterator o = offsetSelf; o != viewEnd; o++) {
+      for (vector<Offset>::iterator o = offsetSelf; o != viewEnd; o++)
         markVisible(addOffset(*a, *o));
-      }
       for (vector<Offset>::iterator o = offsetSelf; o != battleEnd; o++) {
         Loc b = addOffset(*a, *o);
         Square &bs = grid[b.r][b.c];
         if (bs.ant > 0) {
-          if (bs.battle == -1 && as.battle == -1) {
-            ++battle;
-            as.battle = bs.battle = battle;
-          }
-          else if (as.battle == -1) {
+          if (bs.battle == -1 && as.battle == -1)
+            as.battle = bs.battle = ++battle;
+          else if (as.battle == -1)
             as.battle = bs.battle;
-          }
-          else {
+          else
             bs.battle = as.battle;
-          }
         }
       }
     }
     for (vector<Offset>::iterator o = offsetSelf; o != attackEnd; o++) {
       Loc b = addOffset(*a, *o);
       Square &bs = grid[b.r][b.c];
-      if (as.ant == 0)
-        bs.good++;
-      else
-        bs.bad++;
       if (bs.ant != -1 && as.ant != bs.ant)
         ++as.enemies;
     }
@@ -567,29 +514,27 @@ void State::updateVision() {
       }
     }
   }
-  vector< vector< vector<bool> > > used(rows, vector< vector<bool> >(cols, vector<bool>(players, false)));
+  v3b used(rows, v2b(cols, v1b(players, false)));
   for (vector<Loc>::iterator ai = ants.begin(); ai != ants.end(); ai++) {
     Loc &a = *ai;
     Square &as = grid[a.r][a.c];
-    if (as.battle >= 0) {
-      if (!used[a.r][a.c][as.ant]) {
-        used[a.r][a.c][as.ant] = true;
-        for (vector<Offset>::iterator o = aoneOffsets.begin(); o != aoneOffsets.end(); o++) {
-          Loc b = addOffset(a, *o);
-          Square &bs = grid[b.r][b.c];
-          bs.attacked[as.ant]++;
-          bs.sumAttacked++;
-          for (int i = 0; i < players; i++)
-            if (i != as.ant)
-              (bs.fighting[i])++;
-        }
+    if (!used[a.r][a.c][as.ant]) {
+      used[a.r][a.c][as.ant] = true;
+      for (vector<Offset>::iterator o = aoneOffsets.begin(); o != aoneOffsets.end(); o++) {
+        Loc b = addOffset(a, *o);
+        Square &bs = grid[b.r][b.c];
+        bs.attacked[as.ant]++;
+        bs.sumAttacked++;
+        for (int i = 0; i < players; i++)
+          if (i != as.ant)
+            (bs.fighting[i])++;
       }
     }
   }
   for (int r = 0; r < rows; r++) {
     for (int c = 0; c < cols; c++) {
       Square &as = grid[r][c];
-      if (as.isWarzone && as.sumAttacked > 0) {
+      if (as.sumAttacked > 0) {
         for (int i = 0; i < players; i++) {
           int best = as.sumAttacked;
           for (int j = 0; j < players; j++)
@@ -627,21 +572,18 @@ void State::updateDead(v1i &is, v1i &dead) {
 }
 
 float Square::coefficient(int f) {
-  return ant == 0 ? 0.9
+  return ant == 0 ? -0.5
       :  ant >  0 ? 1.0
       :  1.0;
 }
 
 bool Square::canDiffuse() {
-  return !isWater && hillPlayer != 0;
+  return !isWater;// && hillPlayer != 0;
 }
 
 float Square::isSource(int f) {
   return (isFood && f == FOOD)
-      || (hillPlayer > 0 && f == TARGET)
-      || (ant > 0 && f == ENEMY)
-      || (ant == 0 && f == FRIEND)
-      || (!isKnown && f == UNKNOWN);
+      || (hillPlayer > 0 && f == TARGET);
 }
 
 void State::computeInfluenceBlend(v3f &temp) {
@@ -658,7 +600,7 @@ void State::computeInfluenceBlend(v3f &temp) {
             nsumu[f] += bs.inf[f] - as.inf[f];
         }
         for (int f = 0; f < kFactors; f++)
-          temp[r][c][f] = as.isSource(f) ? 1.0
+          temp[r][c][f] = as.isSource(f) ? (f == UNKNOWN ? as.unknown : 1.0)
               : as.coefficient(f) * (as.inf[f] + (decay[f] * nsumu[f]));
       }
       else {
@@ -680,7 +622,7 @@ void State::computeInfluenceLinear(v3f &temp) {
           Loc b = getLoc(a, d);
           Square &bs = grid[b.r][b.c];
           for (int f = 0; f < kFactors; f++) {
-            float h = 0.90 * bs.inf[f];
+            float h = (decay[f] + 0.75) * bs.inf[f];
             if (h > hmax[f])
               hmax[f] = h;
           }
@@ -701,13 +643,13 @@ void State::writeInfluence(v3f &temp) {
   for (int r = 0; r < rows; r++)
     for (int c = 0; c < cols; c++)
       for (int f = 0; f < kFactors; f++)
-        grid[r][c].inf[f] = temp[r][c][f];
+        grid[r][c].inf[f] = max(0.001f, temp[r][c][f]);
 }
 
-void State::updateInfluence(int iterations) {
+void State::updateInfluence() {
   static v3f temp(rows, v2f(cols, v1f(kFactors, 0.0)));
   for (int i = 0; i < iterations; i++) {
-    computeInfluenceBlend(temp);
+    computeInfluenceLinear(temp);
     writeInfluence(temp);
   }
 }
@@ -741,7 +683,6 @@ void State::updatePlayers(int player) {
 }
 
 void State::putWater(int r, int c) {
-  grid[r][c].inf[LAND] = 0.0;
   grid[r][c].isWater = 1;
 }
 
@@ -776,23 +717,13 @@ void State::putAnt(int r, int c, int player) {
   ants.push_back(a);
 }
 
-//input function
 istream& operator>>(istream &is, State &state) {
   int r, c, p;
   string type, junk;
-  //finds out which turn it is
   while (is >> type) {
-    if (type == "end") {
-      state.gameover = 1;
-      break;
-    }
-    else if (type == "turn") {
-      is >> state.turn;
-      break;
-    }
-    else {
-      getline(is, junk);
-    }
+    if      (type == "end")  { state.gameover = 1; break; }
+    else if (type == "turn") { is >> state.turn;   break; }
+    else getline(is, junk);
   }
   if (state.turn == 0) {
     while (is >> type) {
@@ -836,18 +767,12 @@ istream& operator>>(istream &is, State &state) {
 }
 
 ostream& operator<<(ostream& os, const Square &square) {
-  if (square.isVisible)
-    os << "V";
-  if (square.isWater)
-    os << "W";
-  if (square.isHill)
-    os << "H";
-  if (square.isFood)
-    os << "F";
-  if (square.ant >= 0)
-    os << "," << square.ant;
-  if (square.hillPlayer >= 0)
-    os << "," << square.hillPlayer;
+  if (square.isVisible)       os << "V";
+  if (square.isWater)         os << "W";
+  if (square.isHill)          os << "H";
+  if (square.isFood)          os << "F";
+  if (square.ant >= 0)        os << "," << square.ant;
+  if (square.hillPlayer >= 0) os << "," << square.hillPlayer;
   return os;
 }
 
@@ -868,21 +793,21 @@ ostream& operator<<(ostream &os, const Loc &loc) {
 }
 
 ostream& operator<<(ostream& os, const Offset &o) {
-  return os << o.d2 << " " << o.r << "," << o.c;
+  return os << o.d << " " << o.r << "," << o.c;
 }
 
 bool operator<(const Offset &a, const Offset &b) {
-  return a.d2 == b.d2
+  return a.d == b.d
       ? (a.r == b.r ? a.c < b.c : a.r < b.r)
-      : (a.d2 < b.d2);
+      : (a.d < b.d);
 }
 
 bool operator==(const Offset &a, const Offset &b) {
-  return a.r == b.r && a.c == b.c && a.d2 == b.d2;
+  return a.r == b.r && a.c == b.c && a.d == b.d;
 }
 
 bool operator!=(const Offset &a, const Offset &b) {
-  return a.r != b.r || a.c != b.c || a.d2 != b.d2;
+  return a.r != b.r || a.c != b.c || a.d != b.d;
 }
 
 

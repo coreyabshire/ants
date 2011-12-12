@@ -24,15 +24,13 @@ vector<int> antCounts;
 vector<int> foodCounts;
 vector<double> turnTimes;
 bool needEndTurn = false;
-bool factor[kFactors] = { 0, 0, 1, 1, 1, 1, 1 };
+bool factor[kFactors] = { 1, 1, 1 };
 int factorsOn = 0;
 float weight = 0.0;
 bool weightOn = false;
 int mouseR, mouseC;
 bool mouseOver;
-string fnames[kFactors] = {
-  "VISIBLE", "LAND", "FOOD", "TARGET", "UNKNOWN", "ENEMY", "FRIEND"
-};
+string fnames[kFactors] = { "FOOD", "TARGET", "UNKNOWN" };
 
 int antcolors[10][3] = {
   {   0,   0, 255 },
@@ -240,9 +238,9 @@ void display(void) {
         tile(c, r, 0.9, 0.9, 0.0);
       else {
         float inf = influence(s);
-        float fg = (float) s.good * 0.2;
+        float fg = (float) s.attacked[0] * 0.2;
         float fv = (float) s.isVisible * 0.2;
-        float fb = (float) s.bad * 0.2;
+        float fb = (float) s.fighting[0] * 0.2;
         tile(c, r, fb, inf + 0.1, fg + fv);
         //tile(c, r, fb, inf + 0.1, fg + fv);
       }

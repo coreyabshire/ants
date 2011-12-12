@@ -1,9 +1,6 @@
 #ifndef BOT_H_
 #define BOT_H_
 
-#include <queue>
-#include <deque>
-#include <algorithm>
 #include "state.h"
 
 using namespace std;
@@ -18,9 +15,7 @@ class Bot {
   void makeMoves();  //makes moves for a single turn
   void endTurn();    //indicates to the engine that it has made its moves
 
-
   void classifyAnts(v2i &battle, v1i &normal);
-  void markMyHillsUsed();
   void updateAgents(v1i &ants, int mode);
   bool updateAgent(int i, int mode);
   int bestDirection(const Loc &a);

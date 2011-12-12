@@ -20,9 +20,9 @@ const unsigned int kDelay = 1000/10;
 void timer(int value);
 
 string fnames[kFactors] = {
-  "VISIBLE", "LAND", "FOOD", "TARGET", "UNKNOWN", "ENEMY", "FRIEND"
+  "FOOD", "TARGET", "UNKNOWN"
 };
-bool factor[kFactors] = { 1, 1, 1, 1, 1, 1, 1 };
+bool factor[kFactors] = { 1, 1, 1 };
 
 
 class Game;
@@ -74,6 +74,7 @@ class Game {
   void receive(Bot& bot);
   void update();
   void gather();
+  void raze();
   void mouse(int button, int state, int r, int c);
   void special(int k, int r, int c);
   void keyboard(unsigned char k, int r, int c);
@@ -114,10 +115,25 @@ void Game::gather() {
   }
 }
 
+void Game::raze() {
+  for (int r = 0; r < rows; r++) {
+    for (int c = 0; c < cols; c++) {
+      if (grid[r][c].hillPlayer != -1) {
+        if (grid[r][c].ant != -1) {
+          if (grid[r][c].hillPlayer != grid[r][c].ant) {
+            grid[r][c].hillPlayer = -1;
+          }
+        }
+      }
+    }
+  }
+}
+
 void Game::receive(Bot &bot) {
   stopwatch.start();
   bot.state.update();
-  bot.makeMoves();
+  if (running)
+    bot.makeMoves();
   bot.endTurn();
   time = stopwatch.getTime();
 }
@@ -126,6 +142,7 @@ void Game::update() {
   send(sim.bot);
   receive(sim.bot);
   gather();
+  raze();
 }
 
 void MySim::go() {
@@ -171,9 +188,10 @@ void Game::send(Bot &bot) {
             grid[r][c].isFood = 1;
       }
       if (grid[r][c].isFood) {
-        bot.state.grid[r][c].isFood = 1;
-        bot.state.grid[r][c].isFood2 = 1;
-        bot.state.food.push_back(Loc(r, c));
+        bot.state.putFood(r, c);
+      }
+      if (grid[r][c].hillPlayer != -1) {
+        bot.state.putHill(r, c, grid[r][c].hillPlayer);
       }
       if (grid[r][c].ant == 0) {
         bot.state.putAnt(r, c, 0);
@@ -275,14 +293,17 @@ void Game::keyboard(unsigned char k, int r, int c) {
       if (factor3 > 0)
         --factor3;
       break;
+    case 'h':
+      grid[r][c].hillPlayer = 1;
+      if (factor3 > 0)
+        --factor3;
+      break;
     case '\t':
       update();
       glutPostRedisplay();
       break;
     case ' ':
       running = !running;
-      if (running)
-        glutTimerFunc(kDelay, timer, 0);
       break;
     default:
       if (k >= '0' && k <= '9') {
@@ -370,6 +391,9 @@ void Game::display() {
       else if (s.ant == 0) {
         tile(c, r, 0.0, 1.0, 0.0);
       }
+      else if (s.hillPlayer > 0) {
+        tile(c, r, 1.0, 1.0, 0.0);
+      }
       else if (s.isFood)
         tile(c, r, 0.0, 0.0, 1.0);
       else {
@@ -378,7 +402,7 @@ void Game::display() {
         // float f3 = state.grid[r][c].inf[FOOD];
         // tile(c, r, f1 * 0.4, 0.2 *f2 + 0.1 , f3 * 1.0);
         float f = influence(state.grid[r][c]);
-        tile(c, r, 0.0, f + 0.05, 0.0);
+        tile(c, r, 0.0, f + 0.1, 0.0);
       }
     }
   }
@@ -460,8 +484,7 @@ void Game::setup(Bot &bot) {
 void timer(int value) {
   game->update();
   glutPostRedisplay();
-  if (running)
-    glutTimerFunc(kDelay, timer, value);
+  glutTimerFunc(kDelay, timer, value);
 }
 
 void keyboard(unsigned char k, int x, int y) {
