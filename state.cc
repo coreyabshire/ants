@@ -1,11 +1,13 @@
+#include <cassert>
+#include <cmath>
+#include <algorithm>
 #include "state.h"
 
 Square::Square() : inf(kFactors, 0.0) {
-  isVisible = isWater = isHill = isFood = isKnown = isWarzone = 0;
+  isVisible = isWater = isHill = isFood = isKnown = 0;
   isUsed = false;
   index = -1;
   isFood2 = isHill2 = 0;
-  battle = -1;
   ant = hillPlayer = hillPlayer2 = -1;
   inf[UNKNOWN] = 1.0;
   sumAttacked = 0;
@@ -18,12 +20,20 @@ float lerp(float a, float b, float t) {
   return a + t * (b - a);
 }
 
+int add(int a, int b, int m) {
+  return (a + b + m) % m;
+}
+
+int delta(int a, int b, int m) {
+  int d = abs(a - b);
+  return min(d, m - d);
+}
+
 //resets the information for the square except water information
 void Square::reset() {
-  isVisible = isHill2 = isFood2 = isWarzone = 0;
+  isVisible = isHill2 = isFood2 = 0;
   isUsed = false;
   index = -1;
-  battle = -1;
   ant = hillPlayer2 = -1;
   if (!isWater) {
     if (!isKnown)
@@ -33,7 +43,6 @@ void Square::reset() {
     else
       inf[UNKNOWN] = lerp(inf[UNKNOWN], 0.5, 0.01);
   }
-  deadAnts.clear();
   if (sumAttacked > 0) {
     sumAttacked = 0;
     for (int i = 0; i < kMaxPlayers; i++) {
@@ -44,12 +53,11 @@ void Square::reset() {
   }
 }
 
-void Square::markVisible(int turn) {
+void Square::markVisible() {
   isVisible = isKnown = 1;
   isFood = isFood2;
   isHill = isHill2;
   hillPlayer = hillPlayer2;
-  lastSeen = turn;
   if (!isWater)
     inf[UNKNOWN] = lerp(inf[UNKNOWN], 0.0, 0.3);
 }
@@ -122,14 +130,10 @@ void State::setInfluenceParameter(int f, float w, float d, float l) {
 
 // sets the state up
 void State::setup() {
-  nSquares = nUnknown = rows * cols;
-  nSeen = nVisible = 0;
-  battle = -1;
   iterations = 20;
   grid = vector< vector<Square> >(rows, vector<Square>(cols, Square()));
   int n = max(rows, cols);
   dlookup = v2i(n, v1i(n, 0));
-  battleradius = pow(sqrt(attackradius) + 2.0, 2.0);
   weights = v1f(kFactors, 0.0);
   decay = v1f(kFactors, 0.0);
   loss = v1f(kFactors, 0.0);
@@ -149,10 +153,9 @@ void State::setup() {
   vector<Offset>::iterator oi = offsets.begin();
   offsetSelf = oi++;
   offsetFirst = oi++;
-  for (; (oi < offsets.end()) && (*oi).d <= spawnradius; oi++);  spawnEnd = oi;
+  for (; (oi < offsets.end()) && (*oi).d <= spawnradius;  oi++); spawnEnd  = oi;
   for (; (oi < offsets.end()) && (*oi).d <= attackradius; oi++); attackEnd = oi;
-  for (; (oi < offsets.end()) && (*oi).d <= battleradius; oi++); battleEnd = oi;
-  for (; (oi < offsets.end()) && (*oi).d <= viewradius; oi++);   viewEnd = oi;
+  for (; (oi < offsets.end()) && (*oi).d <= viewradius;   oi++); viewEnd   = oi;
   // special attack offsets
   for (oi = offsetSelf; oi < attackEnd; oi++) {
     Offset &o = *oi;
@@ -169,8 +172,6 @@ void State::setup() {
 
 // resets all non-water squares to land and clears the bots ant vector
 void State::reset() {
-  nVisible = 0;
-  battle = -1;
   ants.clear();
   hills.clear();
   food.clear();
@@ -278,10 +279,6 @@ bool State::tryMoves(v1i &va, v1i &vm) {
 }
 
 void State::undoMoves(v1i &va) {
-  // for (int i = 0; i < va.size(); i++) {
-  //   bug << "to undo ant"
-  //       << " " << va[i] << " " << ants[va[i]] << " " << moves[va[i]] << endl;
-  // }
   vector<Loc> pa;
   vector<Loc> pb;
   v1i sId, sIndex, sAnt;
@@ -314,26 +311,6 @@ void State::printAnts(v1i &va) {
   }
 }
 
-// how to check if an ant dies
-// for every ant:
-//   for each enemy in range of ant (using attackradius2):
-//     if (enemies(of ant) in range of ant) >= (enemies(of enemy) in range of enemy) then
-//       the ant is marked dead (actual removal is done after all battles are resolved)
-//       break out of enemy loop
-
-int State::assertAllAnts(v1i &is) {
-  int nonAnts = 0;
-  for (size_t i = 0; i < is.size(); i++) {
-    Loc &a = ants[is[i]];
-    Square &as = grid[a.r][a.c];
-    bool isAnt = as.ant >= 0;
-    if (!isAnt)
-      ++nonAnts;
-    assert(isAnt);
-  }
-  return nonAnts;
-}
-
 Loc State::addOffset(const Loc &a, const Offset &o) {
   return Loc(add(a.r, o.r, rows), add(a.c, o.c, cols));
 }
@@ -353,17 +330,6 @@ Loc State::getLoc(const Loc &a, const Loc &o) {
 
 Loc State::randomLoc() {
   return Loc(rand() % rows, rand() % cols);
-}
-
-void State::markVisible(const Loc& a) {
-  if (!squareAt(a)->isKnown) {
-    --nUnknown;
-    ++nSeen;
-  }
-  if (!squareAt(a)->isVisible) {
-    ++nVisible;
-  }
-  squareAt(a)->markVisible(turn);
 }
 
 bool State::hasAntConsistency() {
@@ -387,32 +353,9 @@ void State::update() {
 void State::updateVision() {
   for (vector<Loc>::iterator a = ants.begin(); a != ants.end(); a++) {
     Square &as = grid[(*a).r][(*a).c];
-    if (as.ant == 0) {
+    if (as.ant == 0)
       for (vector<Offset>::iterator o = offsetSelf; o != viewEnd; o++)
-        markVisible(addOffset(*a, *o));
-      for (vector<Offset>::iterator o = offsetSelf; o != battleEnd; o++) {
-        Loc b = addOffset(*a, *o);
-        Square &bs = grid[b.r][b.c];
-        if (bs.ant > 0) {
-          if (bs.battle == -1 && as.battle == -1)
-            as.battle = bs.battle = ++battle;
-          else if (as.battle == -1)
-            as.battle = bs.battle;
-          else
-            bs.battle = as.battle;
-        }
-      }
-    }
-  }
-  for (vector<Loc>::iterator a = ants.begin(); a != ants.end(); a++) {
-    Square &as = grid[(*a).r][(*a).c];
-    if (as.battle >= 0) {
-      for (vector<Offset>::iterator o = offsetSelf; o != battleEnd; o++) {
-        Loc b = addOffset(*a, *o);
-        Square &bs = grid[b.r][b.c];
-        bs.isWarzone = true;
-      }
-    }
+        squareAt(addOffset(*a, *o))->markVisible();
   }
   v3b used(rows, v2b(cols, v1b(players, false)));
   for (vector<Loc>::iterator ai = ants.begin(); ai != ants.end(); ai++) {
@@ -441,12 +384,7 @@ void State::updateVision() {
             if (j != i)
               if (as.fighting[j] < best)
                 best = as.fighting[j];
-          if (as.fighting[i] < best)
-            as.status[i] = SAFE;
-          else if (as.fighting[i] == best)
-            as.status[i] = KILL;
-          else
-            as.status[i] = DIE;
+          as.status[i] = as.fighting[i] < best ? SAFE : as.fighting[i] == best ? KILL : DIE;
         }
       }
     }
@@ -454,18 +392,15 @@ void State::updateVision() {
 }
 
 float Square::coefficient(int f) {
-  return ant == 0 ? -0.5
-      :  ant >  0 ? 1.0
-      :  1.0;
+  return ant == 0 ? -0.5 : ant >  0 ? 1.0 :  1.0;
 }
 
 bool Square::canDiffuse() {
-  return !isWater;// && hillPlayer != 0;
+  return !isWater;
 }
 
 float Square::isSource(int f) {
-  return (isFood && f == FOOD)
-      || (hillPlayer > 0 && f == TARGET);
+  return (isFood && f == FOOD) || (hillPlayer > 0 && f == TARGET);
 }
 
 void State::computeInfluence(v3f &temp) {
@@ -482,8 +417,7 @@ void State::computeInfluence(v3f &temp) {
             nsumu[f] += bs.inf[f] - as.inf[f];
         }
         for (int f = 0; f < kFactors; f++)
-          temp[r][c][f] = as.isSource(f) ? (f == UNKNOWN ? as.unknown : 1.0)
-              : as.coefficient(f) * (as.inf[f] + (decay[f] * nsumu[f]));
+          temp[r][c][f] = as.isSource(f) ? 1.0 : as.coefficient(f) * (as.inf[f] + (decay[f] * nsumu[f]));
       }
       else {
         for (int f = 0; f < kFactors; f++)
@@ -506,29 +440,6 @@ void State::updateInfluence() {
     computeInfluence(temp);
     writeInfluence(temp);
   }
-}
-
-// This is the output function for a state. It will add a char map
-// representation of the state to the output stream passed to it.
-ostream& operator<<(ostream &os, const State &state) {
-  for (int r = 0; r < state.rows; r++) {
-    for (int c = 0; c < state.cols; c++) {
-      if (state.grid[r][c].isWater)
-        os << '%';
-      else if (state.grid[r][c].isFood)
-        os << '*';
-      else if (state.grid[r][c].isHill)
-        os << (char)('A' + state.grid[r][c].hillPlayer);
-      else if (state.grid[r][c].ant >= 0)
-        os << (char)('a' + state.grid[r][c].ant);
-      else if (state.grid[r][c].isVisible)
-        os << '.';
-      else
-        os << '?';
-    }
-    os << endl;
-  }
-  return os;
 }
 
 void State::updatePlayers(int player) {
@@ -554,7 +465,6 @@ void State::putHill(int r, int c, int player) {
 
 void State::putDead(int r, int c, int player) {
   updatePlayers(player);
-  grid[r][c].deadAnts.push_back(player);
 }
 
 void State::putAnt(int r, int c, int player) {
@@ -572,13 +482,12 @@ void State::putAnt(int r, int c, int player) {
 istream& operator>>(istream &is, State &state) {
   int r, c, p;
   string type, junk;
-  while (is >> type) {
+  while (is >> type)
     if      (type == "end")  { state.gameover = 1; break; }
     else if (type == "turn") { is >> state.turn;   break; }
     else getline(is, junk);
-  }
-  if (state.turn == 0) {
-    while (is >> type) {
+  if (state.turn == 0)
+    while (is >> type)
       if      (type == "loadtime")      is >> state.loadtime;
       else if (type == "turntime")      is >> state.turntime;
       else if (type == "rows")          is >> state.rows;
@@ -590,10 +499,8 @@ istream& operator>>(istream &is, State &state) {
       else if (type == "spawnradius2")  is >> state.spawnradius;
       else if (type == "ready")         { state.timer.start(); break; }
       else getline(is, junk);
-    }
-  }
-  else {
-    while (is >> type) {
+  else
+    while (is >> type)
       if      (type == "w") { is >> r >> c;       state.putWater(r, c); }
       else if (type == "f") { is >> r >> c;       state.putFood(r, c);  }
       else if (type == "a") { is >> r >> c >> p;  state.putAnt(r, c, p); }
@@ -613,8 +520,6 @@ istream& operator>>(istream &is, State &state) {
         break;
       }
       else getline(is, junk);
-    }
-  }
   return is;
 }
 

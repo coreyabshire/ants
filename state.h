@@ -1,13 +1,10 @@
 #ifndef STATE_H_
 #define STATE_H_
 
-#include <iostream>
 #include <cstdlib>
-#include <cassert>
-#include <cmath>
+#include <iostream>
 #include <vector>
 #include <deque>
-#include <algorithm>
 
 #include "Timer.h"
 #include "Bug.h"
@@ -39,26 +36,20 @@ const int kFactors = 3;
 const int kMaxPlayers = 10;
 
 enum { NORMAL, ATTACK, EVADE };
-enum { SAFE=0, KILL=1, DIE=2 };
+enum { SAFE, KILL, DIE };
 const int kModes = 3;
 
 // A square in the grid.
 class Square {
  public:
-  bool isVisible, isWater, isHill, isFood, isKnown, isFood2, isHill2, isWarzone, isUsed;
-  int index;
-  int ant, hillPlayer, hillPlayer2, lastSeen;
-  int enemies;
-  int battle;
-  int sumAttacked;
-  float unknown;
+  bool isVisible, isWater, isHill, isFood, isKnown, isFood2, isHill2, isUsed;
+  int index, ant, hillPlayer, hillPlayer2, sumAttacked;
   v1f inf;
-  v1i deadAnts;
   v1i attacked, fighting, status;
 
   Square();
   void reset();
-  void markVisible(int turn);
+  void markVisible();
   void setAnt(int sindex, int sant, bool sisUsed);
   bool isAnt();
   void clearAnt();
@@ -115,14 +106,8 @@ class Sim {
   virtual void go();
 };
 
-inline int add(int a, int b, int m) {
-  return (a + b + m) % m;
-}
-
-inline int delta(int a, int b, int m) {
-  int d = abs(a - b);
-  return min(d, m - d);
-}
+int add(int a, int b, int m);
+int delta(int a, int b, int m);
 
 // store current state information
 class State {
@@ -131,20 +116,14 @@ class State {
   int attackradius, spawnradius, battleradius, viewradius;
   double loadtime, turntime;
   
-  int nSquares, nUnknown, nSeen, nVisible;
-  v1o offsets;
-  v1o::iterator offsetSelf, offsetFirst, attackEnd, spawnEnd, battleEnd, viewEnd;
-  v1o aoneOffsets;
-  v2o aEnterOffsets;
-  v2o aLeaveOffsets;
+  v1o offsets, aoneOffsets;
+  v1o::iterator offsetSelf, offsetFirst, attackEnd, spawnEnd, viewEnd;
+  int iterations;
+  v1f weights, decay, loss;
+
   vector<double> scores;
   bool gameover;
   int64_t seed;
-  int battle;
-  int iterations;
-  v1f weights;
-  v1f decay;
-  v1f loss;
 
   Sim defaultSim;
   Sim *sim;
@@ -179,8 +158,6 @@ class State {
   Loc getLoc(const Loc &loc, const Loc &off);
   Loc randomLoc();
   v1i getDirections(const Loc &a, const Loc &b);
-  void markVisible(const Loc& a);
-  void calcOffsets(int radius2, vector<Loc> &offsets);
   Loc addOffset(const Loc &a, const Offset &o);
   bool hasAntConsistency();
 
@@ -197,13 +174,6 @@ class State {
   void update();
   void updateVision();
   void updateInfluence();
-  void updateDead(v1i &is, v1i &dead);
-  int pickRandomAnt();
-  bool payoffWin(v1i &ants);
-  int assertAllAnts(v1i &is);
-  void adjustEnemyCount(const Loc &a, int i);
-  int countEnemies(const Loc &a);
-  int assertEnemyCountsCorrect();
   void computeInfluence(v3f &temp);
   void writeInfluence(v3f &temp);
 
@@ -211,9 +181,7 @@ class State {
   Square *squareAt(Loc a) { return &(grid[a.r][a.c]); }
 };
 
-ostream& operator<<(ostream &os, const State &state);
 istream& operator>>(istream &is, State &state);
-
 ostream& operator<<(ostream& os, const v1i &a);
 
 #endif //STATE_H_
