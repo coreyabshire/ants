@@ -104,8 +104,8 @@ void Game::gather() {
     for (int c = 0; c < cols; c++) {
       if (grid[r][c].isFood) {
         Loc a(r, c);
-        for (vector<Offset>::iterator o = sim.bot.state.offsetFirst; o != sim.bot.state.spawnEnd; o++) {
-          Loc b = sim.bot.state.addOffset(a, *o);
+        for (vector<Off>::iterator o = sim.bot.state.offsetFirst; o != sim.bot.state.spawnEnd; o++) {
+          Loc b = sim.bot.state.addOff(a, *o);
           if (grid[b.r][b.c].ant == 0) {
             grid[r][c].isFood = 0;
           }
@@ -118,10 +118,10 @@ void Game::gather() {
 void Game::raze() {
   for (int r = 0; r < rows; r++) {
     for (int c = 0; c < cols; c++) {
-      if (grid[r][c].hillPlayer != -1) {
+      if (grid[r][c].hill != -1) {
         if (grid[r][c].ant != -1) {
-          if (grid[r][c].hillPlayer != grid[r][c].ant) {
-            grid[r][c].hillPlayer = -1;
+          if (grid[r][c].hill != grid[r][c].ant) {
+            grid[r][c].hill = -1;
           }
         }
       }
@@ -190,8 +190,8 @@ void Game::send(Bot &bot) {
       if (grid[r][c].isFood) {
         bot.state.putFood(r, c);
       }
-      if (grid[r][c].hillPlayer != -1) {
-        bot.state.putHill(r, c, grid[r][c].hillPlayer);
+      if (grid[r][c].hill != -1) {
+        bot.state.putHill(r, c, grid[r][c].hill);
       }
       if (grid[r][c].ant == 0) {
         bot.state.putAnt(r, c, 0);
@@ -294,7 +294,7 @@ void Game::keyboard(unsigned char k, int r, int c) {
         --factor3;
       break;
     case 'h':
-      grid[r][c].hillPlayer = 1;
+      grid[r][c].hill = 1;
       if (factor3 > 0)
         --factor3;
       break;
@@ -391,16 +391,12 @@ void Game::display() {
       else if (s.ant == 0) {
         tile(c, r, 0.0, 1.0, 0.0);
       }
-      else if (s.hillPlayer > 0) {
+      else if (s.hill > 0) {
         tile(c, r, 1.0, 1.0, 0.0);
       }
       else if (s.isFood)
         tile(c, r, 0.0, 0.0, 1.0);
       else {
-        // float f1 = state.grid[r][c].inf[UNKNOWN];
-        // float f2 = state.grid[r][c].inf[VISIBLE];
-        // float f3 = state.grid[r][c].inf[FOOD];
-        // tile(c, r, f1 * 0.4, 0.2 *f2 + 0.1 , f3 * 1.0);
         float f = influence(state.grid[r][c]);
         tile(c, r, 0.0, f + 0.1, 0.0);
       }

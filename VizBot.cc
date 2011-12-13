@@ -31,6 +31,7 @@ bool weightOn = false;
 int mouseR, mouseC;
 bool mouseOver;
 string fnames[kFactors] = { "FOOD", "TARGET", "UNKNOWN" };
+string snames[3] = { "SAFE", "KILL", "DIE" };
 
 int antcolors[10][3] = {
   {   0,   0, 255 },
@@ -48,7 +49,9 @@ int antcolors[10][3] = {
 void timer(int value) {
   Bot &bot = *gbot;
   if (cin >> bot.state) {
+    bot.state.update();
     grids.push_back(bot.state.grid);
+    bot.state.bug << "copied grid " << bot.state.turn << endl;
     antCounts.push_back(bot.state.ants.size());
     foodCounts.push_back(bot.state.food.size());
     turn = bot.state.turn;
@@ -199,7 +202,7 @@ void info() {
   }
   if (mouseOver) {
     Loc a(mouseR, mouseC);
-    Square &as = grids[turn][mouseR][mouseC];
+    Square &as = grids[turn][a.r][a.c];
     os << "At " << a << ": " << influence(as) << endl;
     for (int d = 0; d < TDIRECTIONS; d++) {
       Loc b = bot.state.getLoc(a, d);
@@ -208,8 +211,14 @@ void info() {
       os << " " << dc << " " << b << ": " << setfill('0')
          << setiosflags(ios_base::fixed) << setprecision(7) << setw(9) << influence(bs) << endl;
     }
+    os << "Weight " << (weightOn ? "on" : "off") << ": " << factorsOn << " " << weight << endl;
+    os << "Ant:      " << as.ant << endl;
+    os << "Sum:      " << as.sumAttacked << endl;
+    os << "Attacked: " << as.attacked << endl;
+    os << "Fighting: " << as.fighting << endl;
+    os << "Best:     " << as.best << endl;
+    os << "Status:   " << snames[as.status] << endl;
   }
-  os << "Weight " << (weightOn ? "on" : "off") << ": " << factorsOn << " " << weight << endl;
   text(1, 3, os.str().c_str());
 }
 
@@ -224,7 +233,6 @@ void display(void) {
   Bot &bot = *gbot;
   State &state = bot.state;
   vector< vector<Square> > &grid = grids[turn];
-
   for (int r = 0; r < state.rows; r++) {
     for (int c = 0; c < state.cols; c++) {
       Square &s = grid[r][c];
@@ -232,27 +240,27 @@ void display(void) {
         tile(c, r, 0.0, 0.0, 0.0);
       else if (s.ant >= 0)
         anttile(c, r, s.ant);
-      else if (s.hillPlayer >= 0)
-        hilltile(c, r, s.hillPlayer);
+      else if (s.hill >= 0)
+        hilltile(c, r, s.hill);
       else if (s.isFood)
         tile(c, r, 0.9, 0.9, 0.0);
       else {
         float inf = influence(s);
-        float fg = (float) s.attacked[0] * 0.2;
-        float fv = (float) s.isVisible * 0.2;
-        float fb = (float) s.fighting[0] * 0.2;
+        float fg = (float) s.attacked * 0.05;
+        float fv = (float) s.isVisible * 0.1;
+        float fb = (float) s.fighting * 0.05;
         tile(c, r, fb, inf + 0.1, fg + fv);
         //tile(c, r, fb, inf + 0.1, fg + fv);
       }
     }
   }
-
   if (showinfo)
     info();
   glFlush();
   glutSwapBuffers();
   if (needEndTurn) {
     bot.endTurn();
+    bot.state.bug << "ended turn " << bot.state.turn << endl;
     needEndTurn = false;
     glutTimerFunc(kDelay, timer, 0);
   }

@@ -9,6 +9,7 @@ int main(int argc, char *argv[]) {
   bot.endTurn();
   // continues making moves while the game is not over
   while (cin >> bot.state) {
+    bot.state.update();
     bot.makeMoves();
     bot.endTurn();
   }

@@ -41,8 +41,7 @@ enum { SAFE, KILL, DIE };
 class Square {
  public:
   bool isVisible, isWater, isHill, isFood, isKnown, isFood2, isHill2, isUsed;
-  int index, ant, hillPlayer, hillPlayer2, sumAttacked;
-  v1i attacked, fighting, status;
+  int index, ant, hill, hill2, sumAttacked, attacked, fighting, best, status;
   v1f inf;
 
   Square();
@@ -59,8 +58,6 @@ class Square {
   float isSource(int f);
 };
 
-ostream& operator<<(ostream& os, const Square &square);
-
 // A grid location.
 class Loc {
  public:
@@ -75,17 +72,17 @@ bool operator==(const Loc &a, const Loc &b);
 bool operator!=(const Loc &a, const Loc &b);
 ostream& operator<<(ostream &os, const Loc &loc);
 
-struct Offset {
+struct Off {
   int r, c, d;
-  Offset(int r, int c, int d) : r(r), c(c), d(d) {};
+  Off(int r, int c, int d) : r(r), c(c), d(d) {};
 };
 
-bool operator<(const Offset &a, const Offset &b);
-bool operator==(const Offset &a, const Offset &b);
-bool operator!=(const Offset &a, const Offset &b);
-ostream& operator<<(ostream& os, const Offset &o);
+bool operator<(const Off &a, const Off &b);
+bool operator==(const Off &a, const Off &b);
+bool operator!=(const Off &a, const Off &b);
+ostream& operator<<(ostream& os, const Off &o);
 
-typedef vector<Offset> v1o;
+typedef vector<Off> v1o;
 typedef vector<v1o> v2o;
 typedef vector<v2o> v3o;
 
@@ -146,14 +143,11 @@ class State {
 
   void writeMoves();
   void makeMove(int i, int d);
-  void undoMove(int i);
 
-  int distance(const Loc &loc1, const Loc &loc2);
+  int distance(const Loc &a, const Loc &b);
   Loc getLoc(const Loc &startLoc, int direction);
-  Loc getLoc(const Loc &loc, const Loc &off);
   v1i getDirections(const Loc &a, const Loc &b);
-  Loc addOffset(const Loc &a, const Offset &o);
-  bool hasAntConsistency();
+  Loc addOff(const Loc &a, const Off &o);
 
   void putAnt(int r, int c, int player);
   void putDead(int r, int c, int player);

@@ -14,9 +14,7 @@ class Bot {
 
   void makeMoves();  //makes moves for a single turn
   void endTurn();    //indicates to the engine that it has made its moves
-
-  void updateAgents(v1i &ants, int mode);
-  bool updateAgent(int i, int mode);
+  bool updateAgent(int i);
 };
 
 ostream& operator<<(ostream& os, const v1i &a);

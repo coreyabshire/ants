@@ -4,15 +4,10 @@
 #include "state.h"
 
 Square::Square() : inf(kFactors, 0.0) {
-  isVisible = isWater = isHill = isFood = isKnown = isUsed = 0;
-  index = -1;
-  isFood2 = isHill2 = 0;
-  ant = hillPlayer = hillPlayer2 = -1;
+  isVisible = isWater = isHill = isFood = isKnown = isUsed = isFood2 = isHill2 = 0;
+  ant = hill = hill2 = index = -1;
   inf[UNKNOWN] = 1.0;
-  sumAttacked = 0;
-  attacked = v1i(kMaxPlayers, 0);
-  fighting = v1i(kMaxPlayers, 0);
-  status = v1i(kMaxPlayers, 0);
+  sumAttacked = attacked = fighting = best = status = 0;
 }
 
 float lerp(float a, float b, float t) {
@@ -28,34 +23,25 @@ int delta(int a, int b, int m) {
   return min(d, m - d);
 }
 
-//resets the information for the square except water information
 void Square::reset() {
   isVisible = isHill2 = isFood2 = isUsed = 0;
-  index = -1;
-  ant = hillPlayer2 = -1;
+  ant = hill2 = index = -1;
   if (!isWater) {
     if (!isKnown)
       inf[UNKNOWN] = lerp(inf[UNKNOWN], 2.0, 0.01);
-    else if (hillPlayer == 0)
+    else if (hill == 0)
       inf[UNKNOWN] = lerp(inf[UNKNOWN], 2.0, 0.04);
     else
       inf[UNKNOWN] = lerp(inf[UNKNOWN], 0.5, 0.01);
   }
-  if (sumAttacked > 0) {
-    sumAttacked = 0;
-    for (int i = 0; i < kMaxPlayers; i++) {
-      attacked[i] = 0;
-      fighting[i] = 0;
-      status[i] = 0;
-    }
-  }
+  sumAttacked = attacked = fighting = best = status = 0;
 }
 
 void Square::markVisible() {
   isVisible = isKnown = 1;
   isFood = isFood2;
   isHill = isHill2;
-  hillPlayer = hillPlayer2;
+  hill = hill2;
   if (!isWater)
     inf[UNKNOWN] = lerp(inf[UNKNOWN], 0.0, 0.3);
 }
@@ -129,7 +115,7 @@ void State::setInfluenceParameter(int f, float w, float d, float l) {
 // sets the state up
 void State::setup() {
   iterations = 20;
-  grid = vector< vector<Square> >(rows, vector<Square>(cols, Square()));
+  grid = v2s(rows, v1s(cols, Square()));
   int n = max(rows, cols);
   dlookup = v2i(n, v1i(n, 0));
   weights = v1f(kFactors, 0.0);
@@ -145,30 +131,27 @@ void State::setup() {
   // build offset list
   for (int r = (1 - n); r < n; r++)
     for (int c = (1 - n); c < n; c++)
-      offsets.push_back(Offset(r, c, dlookup[abs(r)][abs(c)]));
+      offsets.push_back(Off(r, c, dlookup[abs(r)][abs(c)]));
   sort(offsets.begin(), offsets.end());
   // capture key offsets
-  vector<Offset>::iterator oi = offsets.begin();
+  vector<Off>::iterator oi = offsets.begin();
   offsetSelf = oi++;
   offsetFirst = oi++;
-  for (; (oi < offsets.end()) && (*oi).d <= spawnradius;  oi++); spawnEnd  = oi;
-  for (; (oi < offsets.end()) && (*oi).d <= attackradius; oi++); attackEnd = oi;
-  for (; (oi < offsets.end()) && (*oi).d <= viewradius;   oi++); viewEnd   = oi;
+  for (; (oi < offsets.end()) && oi->d <= spawnradius;  oi++); spawnEnd  = oi;
+  for (; (oi < offsets.end()) && oi->d <= attackradius; oi++); attackEnd = oi;
+  for (; (oi < offsets.end()) && oi->d <= viewradius;   oi++); viewEnd   = oi;
   // special attack offsets
   for (oi = offsetSelf; oi < attackEnd; oi++) {
-    Offset &o = *oi;
     for (int d = 0; d < TDIRECTIONS; d++) {
-      int r = o.r + DIRECTIONS[d][0];
-      int c = o.c + DIRECTIONS[d][1];
-      Offset b(r, c, dlookup[abs(r)][abs(c)]);
+      int r = oi->r + DIRECTIONS[d][0];
+      int c = oi->c + DIRECTIONS[d][1];
+      Off b(r, c, dlookup[abs(r)][abs(c)]);
       if (find(aoneOffsets.begin(), aoneOffsets.end(), b) == aoneOffsets.end())
         aoneOffsets.push_back(b);
     }
   }
-  //sort(aoneOffsets.begin(), aoneOffsets.end());
 }
 
-// resets all non-water squares to land and clears the bots ant vector
 void State::reset() {
   ants.clear();
   hills.clear();
@@ -178,6 +161,7 @@ void State::reset() {
   for(int r = 0; r < rows; r++)
     for(int c = 0; c < cols; c++)
       grid[r][c].reset();
+  bug << "reset state " << turn << endl;
 }
 
 void Sim::makeMove(const Loc &a, int d) {
@@ -222,28 +206,7 @@ void State::makeMove(int i, int d) {
   }
 }
 
-void State::undoMove(int i) {
-  const Loc a = ants[i];
-  Square &as = grid[a.r][a.c];
-  int d = moves[i];
-  if (d != NOMOVE) {
-    d = UDIRECTIONS[d];
-    Loc b = getLoc(a, d);
-    Square &bs = grid[b.r][b.c];
-    bs.ant = as.ant;
-    bs.index = as.index;
-    as.ant = -1;
-    as.index = -1;
-    bs.isUsed = false;
-    moves[i] = -1;
-    ants[i] = b;
-  }
-  else {
-    as.isUsed = false;
-  }
-}
-
-Loc State::addOffset(const Loc &a, const Offset &o) {
+Loc State::addOff(const Loc &a, const Off &o) {
   return Loc(add(a.r, o.r, rows), add(a.c, o.c, cols));
 }
 
@@ -251,53 +214,37 @@ int State::distance(const Loc &a, const Loc &b) {
   return dlookup[delta(a.r, b.r, rows)][delta(a.c, b.c, cols)];
 }
 
-// returns the new location from moving in a given direction with the edges wrapped
 Loc State::getLoc(const Loc &a, int d) {
   return Loc(add(a.r, DIRECTIONS[d][0], rows), add(a.c, DIRECTIONS[d][1], cols));
 }
 
-Loc State::getLoc(const Loc &a, const Loc &o) {
-  return Loc(add(a.r, o.r, rows), add(a.c, o.c, cols));
-}
-
-bool State::hasAntConsistency() {
-  for (int r = 0; r < rows; r++)
-    for (int c = 0; c < cols; c++)
-      if (grid[r][c].ant == -1)
-        assert(grid[r][c].isCleared());
-      else if (grid[r][c].ant == 0)
-        assert(grid[r][c].index >= 0);
-      else
-        assert(grid[r][c].index >= 0);
-  return true;
-}
-
 void State::update() {
-  assert(hasAntConsistency());
   updateVision();
   updateInfluence();
 }
 
 void State::updateVision() {
-  for (vector<Loc>::iterator a = ants.begin(); a != ants.end(); a++) {
-    Square &as = grid[(*a).r][(*a).c];
-    if (as.ant == 0)
-      for (vector<Offset>::iterator o = offsetSelf; o != viewEnd; o++)
-        squareAt(addOffset(*a, *o))->markVisible();
-  }
+  for (vector<Loc>::iterator a = ants.begin(); a != ants.end(); a++)
+    if (grid[a->r][a->c].ant == 0)
+      for (vector<Off>::iterator o = offsetSelf; o != viewEnd; o++)
+        squareAt(addOff(*a, *o))->markVisible();
   v3b used(rows, v2b(cols, v1b(players, false)));
+  v3i attacked(rows, v2i(cols, v1i(players, 0)));
+  v3i fighting(rows, v2i(cols, v1i(players, 0)));
+  v3i status(rows, v2i(cols, v1i(players, 0)));
   for (vector<Loc>::iterator a = ants.begin(); a != ants.end(); a++) {
     Square &as = grid[a->r][a->c];
     if (!used[a->r][a->c][as.ant]) {
       used[a->r][a->c][as.ant] = true;
-      for (vector<Offset>::iterator o = aoneOffsets.begin(); o != aoneOffsets.end(); o++) {
-        Loc b = addOffset(*a, *o);
+      for (vector<Off>::iterator o = aoneOffsets.begin(); o != aoneOffsets.end(); o++) {
+        Loc b = addOff(*a, *o);
         Square &bs = grid[b.r][b.c];
-        bs.attacked[as.ant]++;
+        attacked[b.r][b.c][as.ant]++;
         bs.sumAttacked++;
         for (int i = 0; i < players; i++)
           if (i != as.ant)
-            (bs.fighting[i])++;
+            (fighting[b.r][b.c][i])++;
+        // bug << "marked attacked " << turn << " " << b << " " << bs.sumAttacked << endl;
       }
     }
   }
@@ -309,13 +256,20 @@ void State::updateVision() {
           int best = as.sumAttacked;
           for (int j = 0; j < players; j++)
             if (j != i)
-              if (as.fighting[j] < best)
-                best = as.fighting[j];
-          as.status[i] = as.fighting[i] < best ? SAFE : as.fighting[i] == best ? KILL : DIE;
+              if (fighting[r][c][j] < best)
+                best = fighting[r][c][j];
+          status[r][c][i] = fighting[r][c][i] < best ? SAFE : fighting[r][c][i] == best ? KILL : DIE;
+          if (i == 0)
+            as.best = best;
         }
+        as.attacked = attacked[r][c][0];
+        as.fighting = fighting[r][c][0];
+        as.status = status[r][c][0];
+        // bug << "attack marked " << turn << " " << Loc(r,c) << " " << as.sumAttacked << " " << as.status << endl;
       }
     }
   }
+  bug << "updated vision " << turn << endl;
 }
 
 float Square::coefficient(int f) {
@@ -327,7 +281,7 @@ bool Square::canDiffuse() {
 }
 
 float Square::isSource(int f) {
-  return (isFood && f == FOOD) || (hillPlayer > 0 && f == TARGET);
+  return (isFood && f == FOOD) || (hill > 0 && f == TARGET);
 }
 
 void State::computeInfluence(v3f &temp) {
@@ -386,7 +340,7 @@ void State::putFood(int r, int c) {
 void State::putHill(int r, int c, int player) {
   updatePlayers(player);
   grid[r][c].isHill2 = 1;
-  grid[r][c].hillPlayer2 = player;
+  grid[r][c].hill2 = player;
   hills.push_back(Loc(r, c));
 }
 
@@ -450,16 +404,6 @@ istream& operator>>(istream &is, State &state) {
   return is;
 }
 
-ostream& operator<<(ostream& os, const Square &square) {
-  if (square.isVisible)       os << "V";
-  if (square.isWater)         os << "W";
-  if (square.isHill)          os << "H";
-  if (square.isFood)          os << "F";
-  if (square.ant >= 0)        os << "," << square.ant;
-  if (square.hillPlayer >= 0) os << "," << square.hillPlayer;
-  return os;
-}
-
 bool operator<(const Loc &a, const Loc &b) {
   return a.c == b.c ? a.r < b.r : a.c < b.c;
 }
@@ -476,22 +420,20 @@ ostream& operator<<(ostream &os, const Loc &loc) {
   return os << "(" << (int)loc.r << "," << (int)loc.c << ")";
 }
 
-ostream& operator<<(ostream& os, const Offset &o) {
+ostream& operator<<(ostream& os, const Off &o) {
   return os << o.d << " " << o.r << "," << o.c;
 }
 
-bool operator<(const Offset &a, const Offset &b) {
+bool operator<(const Off &a, const Off &b) {
   return a.d == b.d
       ? (a.r == b.r ? a.c < b.c : a.r < b.r)
       : (a.d < b.d);
 }
 
-bool operator==(const Offset &a, const Offset &b) {
+bool operator==(const Off &a, const Off &b) {
   return a.r == b.r && a.c == b.c && a.d == b.d;
 }
 
-bool operator!=(const Offset &a, const Offset &b) {
+bool operator!=(const Off &a, const Off &b) {
   return a.r != b.r || a.c != b.c || a.d != b.d;
 }
-
-
