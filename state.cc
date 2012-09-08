@@ -28,9 +28,9 @@ void Square::reset() {
   ant = hill2 = index = -1;
   if (!isWater) {
     if (!isKnown)
-      inf[UNKNOWN] = lerp(inf[UNKNOWN], 2.0, 0.01);
+      inf[UNKNOWN] = lerp(inf[UNKNOWN], 1.0, 0.01);
     else if (hill == 0)
-      inf[UNKNOWN] = lerp(inf[UNKNOWN], 2.0, 0.04);
+      inf[UNKNOWN] = lerp(inf[UNKNOWN], 1.0, 0.02);
     else
       inf[UNKNOWN] = lerp(inf[UNKNOWN], 0.5, 0.01);
   }
@@ -123,7 +123,7 @@ void State::setup() {
   loss = v1f(kFactors, 0.0);
   setInfluenceParameter(FOOD,     0.25,  0.10,  1.00);
   setInfluenceParameter(TARGET,   1.00,  0.25,  1.00);
-  setInfluenceParameter(UNKNOWN,  0.01,  0.01,  1.00);
+  setInfluenceParameter(UNKNOWN,  0.10,  0.05,  1.00);
   // build distance lookup tables
   for (int r = 0; r < n; r++)
     for (int c = 0; c < n; c++)
@@ -244,7 +244,6 @@ void State::updateVision() {
         for (int i = 0; i < players; i++)
           if (i != as.ant)
             (fighting[b.r][b.c][i])++;
-        // bug << "marked attacked " << turn << " " << b << " " << bs.sumAttacked << endl;
       }
     }
   }
@@ -265,11 +264,9 @@ void State::updateVision() {
         as.attacked = attacked[r][c][0];
         as.fighting = fighting[r][c][0];
         as.status = status[r][c][0];
-        // bug << "attack marked " << turn << " " << Loc(r,c) << " " << as.sumAttacked << " " << as.status << endl;
       }
     }
   }
-  bug << "updated vision " << turn << endl;
 }
 
 float Square::coefficient(int f) {
@@ -324,8 +321,8 @@ void State::updateInfluence() {
 }
 
 void State::updatePlayers(int player) {
-  if (player > players)
-    players = player;
+  if (player >= players)
+    players = player + 1;
 }
 
 void State::putWater(int r, int c) {
